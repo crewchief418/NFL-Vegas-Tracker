@@ -144,3 +144,5 @@ button:disabled { opacity: .55; cursor: wait !important; }
 @media(max-width:560px) {
  .matchup-hero { padding:17px 12px; }.matchup-selectors { grid-template-columns:minmax(0,1fr) 35px minmax(0,1fr); gap:7px; margin:15px auto 20px; }.versus { width:32px; height:32px; font-size:10px; }.matchup-scoreboard { gap:6px; }.matchup-center { padding:8px 9px; }.matchup-grid { grid-template-columns:1fr; }.viz-card { padding:15px 12px; }.trend-hero { padding:16px 13px; }.trend-badge { flex-basis:72px; width:72px; height:72px; }.trend-badge strong { font-size:25px; }.rank-row { grid-template-columns:25px minmax(80px,1fr) 52px; gap:7px; }.rank-row>small { display:none; }.rank-row>strong { font-size:11px; }.score-bars { gap:45px; }
 }
+
+.clickable-game { cursor:pointer; }.clickable-game:hover { background:#1c2b3e; }
