@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-const tabs = ["Game Tracker", "Matchup Analyzer", "Trend Finder", "Team Performance", "Against Spread", "Over/Under", "Season Trends", "Game Drill-Down", "Streak Tracker", "Win/Loss", "Points"];
+const navGroups = [
+  {label:"Games",items:["Game Tracker"]},
+  {label:"Matchups",items:["Matchup Analyzer"]},
+  {label:"Team Stats",items:["Team Performance","Win/Loss","Points"]},
+  {label:"Betting",items:["Against Spread","Over/Under"]},
+  {label:"Trends & Analysis",items:["Trend Finder","Season Trends","Game Drill-Down","Streak Tracker"]}
+];
+const tabs = navGroups.flatMap(group=>group.items);
 const divisions = {
   "AFC East":["Bills","Dolphins","Patriots","Jets"], "AFC North":["Ravens","Bengals","Browns","Steelers"],
   "AFC South":["Texans","Colts","Jaguars","Titans"], "AFC West":["Broncos","Chiefs","Raiders","Chargers"],
@@ -76,7 +83,7 @@ function TeamPicker({value,onChange,teams,placeholder="Choose a team",allowAll=f
 }
 
 export default function Home() {
-  const [tab,setTab]=useState("Game Tracker"), [competition,setCompetition]=useState("regular"), [season,setSeason]=useState("all"), [team,setTeam]=useState("all"), [status,setStatus]=useState("all"), [matchupA,setMatchupA]=useState("Bills"), [matchupB,setMatchupB]=useState("Dolphins"), [trendMetric,setTrendMetric]=useState("ats"), [trendWindow,setTrendWindow]=useState("10"), [streakMetric,setStreakMetric]=useState("wins"), [drilldown,setDrilldown]=useState({team:"all",metric:"all",label:"All completed games"});
+  const [tab,setTab]=useState("Game Tracker"), [competition,setCompetition]=useState("regular"), [season,setSeason]=useState("all"), [team,setTeam]=useState("all"), [status,setStatus]=useState("all"), [openNav,setOpenNav]=useState(""), [matchupA,setMatchupA]=useState("Bills"), [matchupB,setMatchupB]=useState("Dolphins"), [trendMetric,setTrendMetric]=useState("ats"), [trendWindow,setTrendWindow]=useState("10"), [streakMetric,setStreakMetric]=useState("wins"), [drilldown,setDrilldown]=useState({team:"all",metric:"all",label:"All completed games"});
   const [games,setGames]=useState([]), [busy,setBusy]=useState(false), [message,setMessage]=useState(""), [toast,setToast]=useState(""), [selected,setSelected]=useState(null), [showEditor,setShowEditor]=useState(false), [gameSearch,setGameSearch]=useState("");
   const [form,setForm]=useState({away_score:"",home_score:"",favorite_team:"",favorite_spread:"",spread_text:"",over_under_line:""});
   const [showNew,setShowNew]=useState(false);
@@ -254,16 +261,21 @@ export default function Home() {
     return <div className="table-wrap"><table><thead><tr>{headers.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{analytics.map(r=><tr key={r.name}>{cells(r).map((v,i)=><td key={i}>{i===0?<b>{v}</b>:v}</td>)}</tr>)}{!analytics.length&&<tr><td colSpan={headers.length} className="empty">No imported games to analyze yet.</td></tr>}</tbody></table></div>;
   }
 
+  const activeNavGroup=navGroups.find(group=>group.items.includes(tab))?.label||"Games";
+
   return <main className="shell">
     <header className="topbar"><div><div className="eyebrow">NFL DATA & BETTING ANALYTICS</div><h1>NFL Vegas Tracker</h1><p>Game results · point spreads · historical trends</p></div><div className="season-mark">NFL <b>TRACKER</b><span>EST. 2013</span></div></header>
-    <section className="metrics"><div><span>GAMES IN VIEW</span><strong>{games.length.toLocaleString()}</strong></div><div><span>COMPLETED</span><strong>{completed.length.toLocaleString()}</strong></div><div><span>HOME WINS</span><strong>{homeWins.toLocaleString()}</strong></div><div><span>AWAY WINS</span><strong>{awayWins.toLocaleString()}</strong></div></section>
-    <nav className="tabs">{tabs.map(t=><button key={t} className={tab===t?"active":""} onClick={()=>setTab(t)}>{t}</button>)}</nav>
+    {tab==="Game Tracker"&&<section className="metrics"><div><span>GAMES IN VIEW</span><strong>{games.length.toLocaleString()}</strong></div><div><span>COMPLETED</span><strong>{completed.length.toLocaleString()}</strong></div><div><span>HOME WINS</span><strong>{homeWins.toLocaleString()}</strong></div><div><span>AWAY WINS</span><strong>{awayWins.toLocaleString()}</strong></div></section>}
+    <nav className="section-nav" aria-label="Main sections">{navGroups.map(group=><div className="nav-group" key={group.label}>
+       <button type="button" className={activeNavGroup===group.label?"nav-group-trigger active":"nav-group-trigger"} aria-expanded={openNav===group.label} onClick={()=>setOpenNav(openNav===group.label?"":group.label)}>{group.label}<span className="nav-chevron">▾</span></button>
+       {openNav===group.label&&<div className="nav-dropdown">{group.items.map(item=><button type="button" key={item} className={tab===item?"selected":""} onClick={()=>{setTab(item);setOpenNav("");}}>{item}</button>)}</div>}
+     </div>)}</nav>
     <section className="panel"><div className="toolbar"><div><h2>{tab}</h2><p>{competition==="all"?"Regular season + playoffs":competition==="regular"?"Regular season":"Playoffs"} · historical game database</p></div><div className="filters">
-      <select style={inputStyle} value={competition} onChange={e=>{setCompetition(e.target.value);setSeason("all");setTeam("all");}}><option value="all">Regular + Playoffs</option><option value="regular">Regular Season</option><option value="playoffs">Playoffs</option></select>
-      <select style={inputStyle} value={season} onChange={e=>setSeason(e.target.value)}><option value="all">All Seasons</option>{seasons.map(s=><option key={s} value={s}>{s}</option>)}</select>
-      {!["Matchup Analyzer","Trend Finder","Game Drill-Down","Streak Tracker"].includes(tab)&&<TeamPicker value={team} onChange={setTeam} teams={Object.keys(teamAssets)} allowAll placeholder="All Teams" compact/>}
-      {!["Game Drill-Down","Streak Tracker"].includes(tab)&&<select style={inputStyle} value={status} onChange={e=>setStatus(e.target.value)}><option value="all">All Games</option><option value="completed">Completed</option><option value="upcoming">Not Played</option></select>}
-      <button style={buttonStyle} disabled={competition==="all"} title={competition==="all"?"Choose Regular Season or Playoffs to add a game":""} onClick={()=>setShowNew(true)}>+ Add Game</button>
+      <select aria-label="Competition" style={inputStyle} value={competition} onChange={e=>{setCompetition(e.target.value);setSeason("all");setTeam("all");}}><option value="all">Regular + Playoffs</option><option value="regular">Regular Season</option><option value="playoffs">Playoffs</option></select>
+      <select aria-label="Season" style={inputStyle} value={season} onChange={e=>setSeason(e.target.value)}><option value="all">All Seasons</option>{seasons.map(s=><option key={s} value={s}>{s}</option>)}</select>
+      {["Team Performance","Against Spread","Over/Under","Win/Loss","Points"].includes(tab)&&<TeamPicker value={team} onChange={setTeam} teams={Object.keys(teamAssets)} allowAll placeholder="All Teams" compact/>}
+      {tab==="Game Tracker"&&<select aria-label="Game status" style={inputStyle} value={status} onChange={e=>setStatus(e.target.value)}><option value="all">All Games</option><option value="completed">Completed</option><option value="upcoming">Not Played</option></select>}
+      {tab==="Game Tracker"&&<button style={buttonStyle} disabled={competition==="all"} title={competition==="all"?"Choose Regular Season or Playoffs to add a game":""} onClick={()=>setShowNew(true)}>+ Add Game</button>}
     </div></div>
     {message&&<div className="notice">{message}</div>}
     {toast&&<div className="save-toast" role="status" aria-live="polite"><span className="save-toast-mark">✓</span>{toast}</div>}
