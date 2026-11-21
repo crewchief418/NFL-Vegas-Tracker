@@ -19,7 +19,10 @@ export default function Home() {
   const [message, setMessage] = useState("");
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState({ away_score: "", home_score: "", spread_points: "", spread_text: "" });
-  const [showNew, setShowNew] = useState(false);\n  const [showImport, setShowImport] = useState(false);\n  const [importSecret, setImportSecret] = useState("");\n  const [importFile, setImportFile] = useState(null);
+  const [showNew, setShowNew] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [importSecret, setImportSecret] = useState("");
+  const [importFile, setImportFile] = useState(null);
   const [newGame, setNewGame] = useState({ season: new Date().getFullYear(), game_date: "", game_time: "", away_team: "", home_team: "", spread_points: "", spread_text: "", game_type: "" });
 
   async function loadGames() {
