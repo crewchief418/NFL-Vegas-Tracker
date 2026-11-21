@@ -185,3 +185,6 @@ button:disabled { opacity: .55; cursor: wait !important; }
 .matchup-selectors .team-picker-menu{width:min(560px,calc(100vw - 36px))}
 .h2h-controls .team-picker,.trend-controls .team-picker{margin-top:0}
 @media(max-width:600px){.team-picker-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.team-picker-option{min-height:94px}.team-picker-art{width:52px;height:52px}.team-picker-option img{width:41px;height:41px}.team-picker-menu{max-height:62vh}.team-picker-compact{width:100%}}
+
+/* Keep visual team menus above the matchup hero surface. */
+.matchup-hero{overflow:visible}.matchup-selectors{position:relative;z-index:3}
