@@ -19,7 +19,7 @@ export default function Home() {
   const [tab,setTab]=useState("Game Tracker"), [competition,setCompetition]=useState("regular"), [season,setSeason]=useState("all"), [team,setTeam]=useState("all"), [status,setStatus]=useState("all"), [opponent,setOpponent]=useState("all"), [matchupA,setMatchupA]=useState("Bills"), [matchupB,setMatchupB]=useState("Dolphins"), [trendMetric,setTrendMetric]=useState("ats"), [trendWindow,setTrendWindow]=useState("10");
   const [games,setGames]=useState([]), [busy,setBusy]=useState(false), [message,setMessage]=useState(""), [selected,setSelected]=useState(null), [showEditor,setShowEditor]=useState(false), [gameSearch,setGameSearch]=useState("");
   const [form,setForm]=useState({away_score:"",home_score:"",favorite_team:"",favorite_spread:"",spread_text:"",over_under_line:""});
-  const [showNew,setShowNew]=useState(false), [showImport,setShowImport]=useState(false), [importSecret,setImportSecret]=useState(""), [importFile,setImportFile]=useState(null);
+  const [showNew,setShowNew]=useState(false);
   const [newGame,setNewGame]=useState({season:new Date().getFullYear(),game_date:"",game_time:"",away_team:"",home_team:"",favorite_team:"",favorite_spread:"",spread_text:"",over_under_line:"",game_type:""});
 
   async function loadGames() {
@@ -68,18 +68,6 @@ export default function Home() {
       const response=await fetch("/api/games",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({...form,competition_type:selectedGame.competition_type,source_game_id:selectedGame.source_game_id,away_team:selectedGame.away_team,home_team:selectedGame.home_team})});
       const data=await response.json();if(!response.ok)throw new Error(data.error||"Save failed");
       setMessage(data.ats_result==="push"?"Saved · ATS push":"Game and betting lines saved");await loadGames();
-    }catch(e){setMessage(e.message);}finally{setBusy(false);}
-  }
-  async function importWorkbook(e) {
-    e.preventDefault();if(!importFile||!importSecret){setMessage("Choose the workbook and enter the import key.");return;}
-    setBusy(true);setMessage("");
-    try {
-      const body=new FormData();body.append("file",importFile);
-      const response=await fetch("/api/import",{method:"POST",headers:{"x-import-secret":importSecret},body}),data=await response.json();
-      if(!response.ok)throw new Error(data.error||"Import failed");
-      setShowImport(false);setImportSecret("");setImportFile(null);
-      setMessage(`Workbook import complete: ${data.inserted.toLocaleString()} added, ${data.alreadyPresent.toLocaleString()} already existed.`);
-      setSeason("all");setTeam("all");setStatus("all");await loadGames();
     }catch(e){setMessage(e.message);}finally{setBusy(false);}
   }
   async function createGame(e) {
@@ -179,7 +167,7 @@ export default function Home() {
       <select style={inputStyle} value={season} onChange={e=>setSeason(e.target.value)}><option value="all">All Seasons</option>{seasons.map(s=><option key={s} value={s}>{s}</option>)}</select>
       {!["Matchup Analyzer","Trend Finder"].includes(tab)&&<select style={inputStyle} value={team} onChange={e=>setTeam(e.target.value)}><option value="all">All Teams</option>{teams.map(t=><option key={t}>{t}</option>)}</select>}
       <select style={inputStyle} value={status} onChange={e=>setStatus(e.target.value)}><option value="all">All Games</option><option value="completed">Completed</option><option value="upcoming">Not Played</option></select>
-      <button className="secondary" onClick={()=>setShowImport(true)}>Import Workbook</button><button style={buttonStyle} disabled={competition==="all"} title={competition==="all"?"Choose Regular Season or Playoffs to add a game":""} onClick={()=>setShowNew(true)}>+ Add Game</button>
+      <button style={buttonStyle} disabled={competition==="all"} title={competition==="all"?"Choose Regular Season or Playoffs to add a game":""} onClick={()=>setShowNew(true)}>+ Add Game</button>
     </div></div>
     {message&&<div className="notice">{message}</div>}
     {tab==="Game Tracker"?<div className="tracker-layout">
@@ -215,7 +203,6 @@ export default function Home() {
       <div className="editor-meta"><span>Actual game total (from scores)</span><b>{form.away_score!==""&&form.home_score!==""?Number(form.away_score)+Number(form.home_score):"—"}</b></div>
       <button style={{...buttonStyle,width:"100%",marginTop:16}} disabled={busy} onClick={saveGame}>{busy?"Saving…":"Save Game Results & Lines"}</button>
     </section></div>}
-    {showImport&&<div className="modal-backdrop" onClick={()=>setShowImport(false)}><form className="modal" onSubmit={importWorkbook} onClick={e=>e.stopPropagation()}><div className="modal-head"><div><span className="eyebrow">HISTORICAL DATA</span><h2>Import NFL Scores workbook</h2></div><button type="button" className="close" onClick={()=>setShowImport(false)}>×</button></div><p className="muted">Reads Data_Picks and Playoff_Data_Picks, skips heading rows, and avoids duplicate game IDs.</p><label>Workbook file<input style={inputStyle} type="file" accept=".xlsx,.xls" onChange={e=>setImportFile(e.target.files?.[0]||null)} required/></label><label>One-time import key<input style={inputStyle} type="password" autoComplete="off" value={importSecret} onChange={e=>setImportSecret(e.target.value)} required/></label><div className="modal-actions"><button type="button" className="secondary" onClick={()=>setShowImport(false)}>Cancel</button><button style={buttonStyle} disabled={busy}>{busy?"Importing…":"Import workbook"}</button></div></form></div>}
     {showNew&&<div className="modal-backdrop" onClick={()=>setShowNew(false)}><form className="modal" onSubmit={createGame} onClick={e=>e.stopPropagation()}><div className="modal-head"><div><span className="eyebrow">MANUAL ENTRY</span><h2>Add New Game</h2></div><button type="button" className="close" onClick={()=>setShowNew(false)}>×</button></div>
       <div className="form-grid">
         <label>Season<input style={inputStyle} type="number" value={newGame.season} onChange={e=>setNewGame({...newGame,season:e.target.value})} required/></label><label>Game type<input style={inputStyle} value={newGame.game_type} onChange={e=>setNewGame({...newGame,game_type:e.target.value})} placeholder="Regular / Wild Card…"/></label>
