@@ -148,3 +148,9 @@ button:disabled { opacity: .55; cursor: wait !important; }
 .clickable-game { cursor:pointer; }.clickable-game:hover { background:#1c2b3e; }
 
 .stat-click { cursor:pointer; transition:transform .15s ease,border-color .15s ease,background .15s ease; }.stat-click:hover { transform:translateY(-2px); border-color:#d8ad4b; background:linear-gradient(145deg,#26364a,#172537); }.stat-click:focus-visible { outline:2px solid #e7b84e; outline-offset:3px; }
+
+/* Save confirmation toast */
+.save-toast { position:fixed; z-index:3000; left:50%; bottom:max(24px,env(safe-area-inset-bottom)); transform:translateX(-50%); display:flex; align-items:center; gap:10px; padding:13px 20px; border:1px solid rgba(86,190,139,.45); border-radius:999px; background:#142b27; color:#eafff2; box-shadow:0 12px 36px rgba(0,0,0,.38); font-weight:750; font-size:14px; animation:toast-in .18s ease-out; white-space:nowrap; pointer-events:none; }
+.save-toast-mark { width:20px; height:20px; display:grid; place-items:center; border-radius:50%; background:#2f9b68; color:white; font-size:13px; }
+@keyframes toast-in { from { opacity:0; transform:translate(-50%,10px); } to { opacity:1; transform:translate(-50%,0); } }
+@media(max-width:480px){.save-toast{bottom:calc(18px + env(safe-area-inset-bottom));max-width:calc(100vw - 32px);}}
