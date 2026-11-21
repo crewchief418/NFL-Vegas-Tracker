@@ -10,7 +10,7 @@ function record(w,l,p=0) { return `${w}-${l}${p ? "-"+p : ""}`; }
 
 export default function Home() {
   const [tab,setTab]=useState("Game Tracker"), [competition,setCompetition]=useState("regular"), [season,setSeason]=useState("all"), [team,setTeam]=useState("all"), [status,setStatus]=useState("all");
-  const [games,setGames]=useState([]), [busy,setBusy]=useState(false), [message,setMessage]=useState(""), [selected,setSelected]=useState(null);
+  const [games,setGames]=useState([]), [busy,setBusy]=useState(false), [message,setMessage]=useState(""), [selected,setSelected]=useState(null), [showEditor,setShowEditor]=useState(false), [gameSearch,setGameSearch]=useState("");
   const [form,setForm]=useState({away_score:"",home_score:"",favorite_team:"",favorite_spread:"",spread_text:"",over_under_line:""});
   const [showNew,setShowNew]=useState(false), [showImport,setShowImport]=useState(false), [importSecret,setImportSecret]=useState(""), [importFile,setImportFile]=useState(null);
   const [newGame,setNewGame]=useState({season:new Date().getFullYear(),game_date:"",game_time:"",away_team:"",home_team:"",favorite_team:"",favorite_spread:"",spread_text:"",over_under_line:"",game_type:""});
@@ -35,6 +35,8 @@ export default function Home() {
   const completed=games.filter(g=>g.away_score!=null&&g.home_score!=null);
   const homeWins=completed.filter(g=>g.home_score>g.away_score).length, awayWins=completed.length-homeWins;
   const selectedGame=games.find(g=>g.source_game_id===selected?.source_game_id)||null;
+  const visibleGames=games.filter(g=>!gameSearch||`${g.away_team} ${g.home_team} ${g.game_date} ${g.source_game_id}`.toLowerCase().includes(gameSearch.toLowerCase()));
+  const ouGradedCount=completed.filter(g=>g.over_under_line!=null&&g.total_points!=null).length;
 
   function chooseGame(g) {
     setSelected(g);
@@ -45,6 +47,12 @@ export default function Home() {
       spread_text:g.spread_text??"",over_under_line:g.over_under_line??""
     });
     setMessage("");
+    setShowEditor(true);
+  }
+  function moveSelected(direction) {
+    const index=games.findIndex(g=>g.source_game_id===selectedGame?.source_game_id);
+    const next=games[index+direction];
+    if(next) chooseGame(next);
   }
   async function saveGame() {
     if(!selectedGame)return;
@@ -100,8 +108,9 @@ export default function Home() {
     let headers=[], cells= r=>[];
     if(tab==="Win/Loss"){headers=["TEAM","G","W","L","WIN %","HOME W-L","AWAY W-L"];cells=r=>[r.name,r.played,r.wins,r.losses,r.winPct,r.home,r.away];}
     if(tab==="Against Spread"){headers=["TEAM","ATS W-L-P","GRADED GAMES","COVER %"];cells=r=>[r.name,r.ats,r.atsGames,r.atsGames?pct(Number(r.ats.split("-")[0]),Math.max(0,r.atsGames-Number(r.ats.split("-")[2]||0))):"—"];}
-    if(tab==="Over/Under"){headers=["TEAM","OVER-UNDER-PUSH","GRADED GAMES","OVER %"];cells=r=>[r.name,r.over,r.ouGames,r.ouGames?pct(Number(r.over.split("-")[0]),Math.max(0,r.ouGames-Number(r.over.split("-")[2]||0))):"—"];}
+    if(tab==="Over/Under"){headers=["TEAM","OVER-UNDER-PUSH","GRADED GAMES","OVER %"];cells=r=>[r.name,r.ouGames?r.over:"—",r.ouGames,pct(Number(r.over.split("-")[0]),Math.max(0,r.ouGames-Number(r.over.split("-")[2]||0)))];}
     if(tab==="Points"){headers=["TEAM","G","POINTS FOR","POINTS AGAINST","DIFFERENTIAL","AVG POINTS"];cells=r=>[r.name,r.played,r.pf,r.pa,r.diff,r.played?(r.pf/r.played).toFixed(1):"—"];}
+    if(tab==="Over/Under" && ouGradedCount===0) return <div className="empty-state"><div className="eyebrow">OVER / UNDER DATA</div><h3>No betting totals have been entered yet</h3><p>The workbook contains actual final game totals, but it does not provide the sportsbook over/under line. Those are different numbers. Enter the betting total in the Game Editor for each game to begin building this report.</p><button style={buttonStyle} onClick={()=>setTab("Game Tracker")}>Go to Game Tracker</button></div>;
     return <div className="table-wrap"><table><thead><tr>{headers.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{analytics.map(r=><tr key={r.name}>{cells(r).map((v,i)=><td key={i}>{i===0?<b>{v}</b>:v}</td>)}</tr>)}{!analytics.length&&<tr><td colSpan={headers.length} className="empty">No imported games to analyze yet.</td></tr>}</tbody></table></div>;
   }
 
@@ -118,26 +127,23 @@ export default function Home() {
     </div></div>
     {message&&<div className="notice">{message}</div>}
     {tab==="Game Tracker"?<div className="tracker-layout">
-      <div className="game-list"><div className="list-head"><span>DATE / MATCHUP</span><span>RESULT</span></div>
-        {busy&&!games.length?<p className="empty">Loading games…</p>:games.map(g=><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}>
+      <div className="game-list"><div className="game-search"><input aria-label="Search games" style={inputStyle} placeholder="Search team, date, or game ID…" value={gameSearch} onChange={e=>setGameSearch(e.target.value)}/><span>{visibleGames.length.toLocaleString()} games</span></div><div className="list-head"><span>DATE / MATCHUP</span><span>RESULT</span></div>
+        {busy&&!games.length?<p className="empty">Loading games…</p>:visibleGames.map(g=><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}>
           <span><b>{g.away_team} @ {g.home_team}</b><small>{g.game_date} · {g.game_time||"Time TBD"} · {g.game_type||"Game"}{g.favorite_team? ` · Fav: ${g.favorite_team} -${g.favorite_spread??""}`:""}{g.over_under_line!=null?` · O/U ${g.over_under_line}`:""}</small></span><span className="score">{g.away_score==null?"—":`${g.away_score} - ${g.home_score}`}</span>
         </button>)}
-        {!games.length&&!busy&&<p className="empty">No games match these filters. Import historical data to populate the tracker.</p>}
+        {!visibleGames.length&&!busy&&<p className="empty">No games match this search and filter.</p>}
       </div>
-      <aside className="editor">{selectedGame?<><span className="eyebrow">GAME EDITOR · #{selectedGame.source_game_id}</span><h3>{selectedGame.away_team} <i>@</i> {selectedGame.home_team}</h3><p className="muted">{selectedGame.game_date} · {selectedGame.season} {selectedGame.game_type||""}</p>
-        <label>{selectedGame.away_team} score<input style={inputStyle} type="number" min="0" value={form.away_score} onChange={e=>setForm({...form,away_score:e.target.value})}/></label>
-        <label>{selectedGame.home_team} score<input style={inputStyle} type="number" min="0" value={form.home_score} onChange={e=>setForm({...form,home_score:e.target.value})}/></label>
-        <div className="form-grid">
-          <label>Favorite team<select style={inputStyle} value={form.favorite_team} onChange={e=>setForm({...form,favorite_team:e.target.value})}><option value="">No favorite</option><option value={selectedGame.away_team}>{selectedGame.away_team}</option><option value={selectedGame.home_team}>{selectedGame.home_team}</option><option value="PK">Pick’em (PK)</option></select></label>
-          <label>Spread (points)<input style={inputStyle} type="number" min="0" step="0.5" value={form.favorite_spread} disabled={form.favorite_team==="PK"} onChange={e=>setForm({...form,favorite_spread:e.target.value})} placeholder="e.g. 3.5"/></label>
-          <label className="full">Over/under total<input style={inputStyle} type="number" min="0" step="0.5" value={form.over_under_line} onChange={e=>setForm({...form,over_under_line:e.target.value})} placeholder="e.g. 44.5"/></label>
-        </div>
-        {form.favorite_team==="PK"&&<p className="muted">Pick’em · spread is automatically zero.</p>}
-        <div className="editor-meta"><span>Actual game total</span><b>{form.away_score!==""&&form.home_score!==""?Number(form.away_score)+Number(form.home_score):"—"}</b></div>
-        <button style={{...buttonStyle,width:"100%",marginTop:16}} disabled={busy} onClick={saveGame}>{busy?"Saving…":"Update Game Result & Lines"}</button>
-      </>:<div className="select-prompt"><div>◈</div><h3>Select a game</h3><p>Choose a matchup to edit its scores, favorite, spread, and over/under line.</p></div>}</aside>
+
     </div>:<div className="analytics"><div className="analytics-intro"><span className="eyebrow">SEASON ANALYTICS</span><h3>{tab} breakdown</h3><p>{tab==="Against Spread"?"ATS results are graded against the favorite's spread.":tab==="Over/Under"?"Compares actual combined score with the entered betting total.":tab==="Points"?"Points scored and allowed by each team.":"Win-loss records split by home and away games."} Only completed games currently in view are included.</p></div>{analyticsTable()}</div>}
     </section>
+    {showEditor&&selectedGame&&<div className="modal-backdrop editor-backdrop" onClick={()=>setShowEditor(false)}><section className="editor editor-modal" onClick={e=>e.stopPropagation()}><div className="editor-modal-head"><div><span className="eyebrow">GAME EDITOR · #{selectedGame.source_game_id}</span><h3>{selectedGame.away_team} <i>@</i> {selectedGame.home_team}</h3><p className="muted">{selectedGame.game_date} · {selectedGame.season} {selectedGame.game_type||""}</p></div><button className="close" onClick={()=>setShowEditor(false)}>×</button></div>
+      <div className="editor-nav"><button className="secondary" onClick={()=>moveSelected(-1)} disabled={games.findIndex(g=>g.source_game_id===selectedGame.source_game_id)===0}>← Previous game</button><button className="secondary" onClick={()=>moveSelected(1)} disabled={games.findIndex(g=>g.source_game_id===selectedGame.source_game_id)===games.length-1}>Next game →</button></div>
+      <div className="score-grid"><label>{selectedGame.away_team} score<input autoFocus style={inputStyle} type="number" min="0" value={form.away_score} onChange={e=>setForm({...form,away_score:e.target.value})}/></label><label>{selectedGame.home_team} score<input style={inputStyle} type="number" min="0" value={form.home_score} onChange={e=>setForm({...form,home_score:e.target.value})}/></label></div>
+      <div className="form-grid"><label>Favorite team<select style={inputStyle} value={form.favorite_team} onChange={e=>setForm({...form,favorite_team:e.target.value})}><option value="">No favorite</option><option value={selectedGame.away_team}>{selectedGame.away_team}</option><option value={selectedGame.home_team}>{selectedGame.home_team}</option><option value="PK">Pick’em (PK)</option></select></label><label>Spread (points)<input style={inputStyle} type="number" min="0" step="0.5" value={form.favorite_spread} disabled={form.favorite_team==="PK"} onChange={e=>setForm({...form,favorite_spread:e.target.value})} placeholder="e.g. 3.5"/></label><label className="full">Over/under betting line<input style={inputStyle} type="number" min="0" step="0.5" value={form.over_under_line} onChange={e=>setForm({...form,over_under_line:e.target.value})} placeholder="e.g. 44.5"/></label></div>
+      {form.favorite_team==="PK"&&<p className="muted">Pick’em · spread is automatically zero.</p>}
+      <div className="editor-meta"><span>Actual game total (from scores)</span><b>{form.away_score!==""&&form.home_score!==""?Number(form.away_score)+Number(form.home_score):"—"}</b></div>
+      <button style={{...buttonStyle,width:"100%",marginTop:16}} disabled={busy} onClick={saveGame}>{busy?"Saving…":"Save Game Results & Lines"}</button>
+    </section></div>}
     {showImport&&<div className="modal-backdrop" onClick={()=>setShowImport(false)}><form className="modal" onSubmit={importWorkbook} onClick={e=>e.stopPropagation()}><div className="modal-head"><div><span className="eyebrow">HISTORICAL DATA</span><h2>Import NFL Scores workbook</h2></div><button type="button" className="close" onClick={()=>setShowImport(false)}>×</button></div><p className="muted">Reads Data_Picks and Playoff_Data_Picks, skips heading rows, and avoids duplicate game IDs.</p><label>Workbook file<input style={inputStyle} type="file" accept=".xlsx,.xls" onChange={e=>setImportFile(e.target.files?.[0]||null)} required/></label><label>One-time import key<input style={inputStyle} type="password" autoComplete="off" value={importSecret} onChange={e=>setImportSecret(e.target.value)} required/></label><div className="modal-actions"><button type="button" className="secondary" onClick={()=>setShowImport(false)}>Cancel</button><button style={buttonStyle} disabled={busy}>{busy?"Importing…":"Import workbook"}</button></div></form></div>}
     {showNew&&<div className="modal-backdrop" onClick={()=>setShowNew(false)}><form className="modal" onSubmit={createGame} onClick={e=>e.stopPropagation()}><div className="modal-head"><div><span className="eyebrow">MANUAL ENTRY</span><h2>Add New Game</h2></div><button type="button" className="close" onClick={()=>setShowNew(false)}>×</button></div>
       <div className="form-grid">
