@@ -29,7 +29,7 @@ export async function GET(request) {
     if (!validCompetition(competition)) return NextResponse.json({error:"Invalid competition type"},{status:400});
     const values=[competition]; let where="WHERE competition_type=$1";
     const season=searchParams.get("season"), team=searchParams.get("team"), completed=searchParams.get("completed");
-    if(season&&/^\\d{4}$/.test(season)){values.push(Number(season));where+=` AND season=$${values.length}`;}
+    if(season&&/^\d{4}$/.test(season)){values.push(Number(season));where+=` AND season=$${values.length}`;}
     if(team){values.push(team);where+=` AND (away_team=$${values.length} OR home_team=$${values.length})`;}
     if(completed==="1")where+=" AND away_score IS NOT NULL";
     if(completed==="0")where+=" AND away_score IS NULL";
