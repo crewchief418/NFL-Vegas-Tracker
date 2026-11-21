@@ -5,6 +5,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function validCompetition(value) { return value === "regular" || value === "playoffs"; }
+function normalizeTeam(value) {
+  const name = String(value || "").trim();
+  if (/^redskins$/i.test(name)) return "Commanders";
+  if (/^patriors$/i.test(name)) return "Patriots";
+  return name;
+}
 function calculateAts(awayScore, homeScore, spread) {
   if (awayScore == null || homeScore == null || spread == null) return { covered: null, result: "unknown" };
   const margin = Number(awayScore) + Number(spread) - Number(homeScore);
@@ -76,16 +82,17 @@ export async function PATCH(request) {
 export async function POST(request) {
   try {
     const body=await request.json();
+    const awayTeam=normalizeTeam(body.away_team), homeTeam=normalizeTeam(body.home_team);
     if(!validCompetition(body.competition_type)||!Number.isInteger(Number(body.season))||!body.game_date||
-      !body.away_team?.trim()||!body.home_team?.trim()||body.away_team.trim()===body.home_team.trim())
+      !awayTeam||!homeTeam||awayTeam===homeTeam)
       return NextResponse.json({error:"Enter a season, date, two different teams, and competition."},{status:400});
-    const isPick=body.favorite_team==="PK", favoriteTeam=isPick?"PK":(body.favorite_team||null);
+    const isPick=body.favorite_team==="PK", favoriteTeam=isPick?"PK":normalizeTeam(body.favorite_team)||null;
     const favoriteSpread=isPick?0:numericOrNull(body.favorite_spread), overUnder=numericOrNull(body.over_under_line);
     if(Number.isNaN(favoriteSpread)||(favoriteSpread!==null&&favoriteSpread<0)||(Number.isNaN(overUnder)||(overUnder!==null&&overUnder<0))||
-      (favoriteTeam!=="PK"&&favoriteTeam&&![body.away_team.trim(),body.home_team.trim()].includes(favoriteTeam))||
+      (favoriteTeam!=="PK"&&favoriteTeam&&![awayTeam,homeTeam].includes(favoriteTeam))||
       (!isPick&&favoriteSpread!==null&&favoriteSpread>0&&!favoriteTeam))
       return NextResponse.json({error:"Choose a valid favorite and spread, or select Pick’em; enter a valid over/under total."},{status:400});
-    const spread=isPick?0:favoriteSpread===null?null:favoriteTeam===body.away_team.trim()?-favoriteSpread:favoriteSpread;
+    const spread=isPick?0:favoriteSpread===null?null:favoriteTeam===awayTeam?-favoriteSpread:favoriteSpread;
     const displaySpread=isPick?"PK":favoriteSpread===null?null:`${favoriteTeam} -${favoriteSpread}`;
     const nextId=await query("SELECT COALESCE(MAX(source_game_id),1000)+1 AS next_id FROM public.games WHERE competition_type=$1",[body.competition_type]);
     const result=await query(`INSERT INTO public.games
@@ -95,7 +102,7 @@ export async function POST(request) {
       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NULL,NULL,NULL,NULL,'unknown','Manual Entry',0)
       RETURNING source_game_id`,
       [body.competition_type,Number(nextId.rows[0].next_id),Number(body.season),body.game_type||null,body.game_date,body.game_time||null,
-       body.away_team.trim(),body.home_team.trim(),favoriteTeam,favoriteSpread,displaySpread,spread,overUnder]);
+       awayTeam,homeTeam,favoriteTeam,favoriteSpread,displaySpread,spread,overUnder]);
     return NextResponse.json({success:true,source_game_id:result.rows[0].source_game_id},{status:201});
   }catch(error){console.error("POST /api/games:",error);return NextResponse.json({error:"Unable to create game. Check the date and betting lines."},{status:500});}
 }
