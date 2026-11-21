@@ -235,3 +235,29 @@ button:disabled { opacity: .55; cursor: wait !important; }
   .matchup-game-details>span{display:flex;flex-direction:column;gap:3px;font-size:11px;min-width:0;overflow-wrap:anywhere}
   .matchup-game-details small{color:#8497ad;font-size:8px;letter-spacing:1px;font-weight:850}
 }
+
+
+/* Focused section navigation and contextual page controls */
+.section-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:18px 0 20px;padding:7px;border:1px solid #293b50;border-radius:12px;background:#111c2a}
+.nav-group{position:relative}
+.nav-group-trigger{display:flex;align-items:center;gap:9px;padding:11px 14px;border:1px solid transparent;border-radius:8px;background:transparent;color:#aab8c9;font-size:12px;font-weight:850;cursor:pointer;white-space:nowrap}
+.nav-group-trigger:hover,.nav-group-trigger[aria-expanded="true"]{background:#1b2b40;color:#f3f6fa;border-color:#3b5069}
+.nav-group-trigger.active{color:#f2c65e}
+.nav-chevron{color:#e7b84e;font-size:11px}
+.nav-dropdown{position:absolute;top:calc(100% + 8px);left:0;z-index:80;min-width:210px;padding:7px;border:1px solid #40546c;border-radius:11px;background:#142235;box-shadow:0 18px 45px #000b}
+.nav-dropdown button{display:block;width:100%;padding:11px 12px;border:0;border-radius:7px;background:transparent;color:#cbd5e1;text-align:left;font-size:12px;font-weight:700;cursor:pointer}
+.nav-dropdown button:hover,.nav-dropdown button.selected{background:#26374b;color:#f2c65e}
+.panel .toolbar{align-items:center}
+.panel .filters{align-items:center}
+.panel .filters select{min-width:145px!important}
+.panel .filters .team-picker-compact{width:155px}
+@media(max-width:650px){
+ .section-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:6px}
+ .nav-group{min-width:0}
+ .nav-group-trigger{width:100%;justify-content:space-between;padding:11px 9px;font-size:11px}
+ .nav-dropdown{left:0;right:0;min-width:0;width:max(100%,190px)}
+ .panel .toolbar{gap:12px;padding:16px 13px}
+ .panel .filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;gap:7px}
+ .panel .filters select,.panel .filters .team-picker-compact{width:100%;min-width:0!important}
+ .panel .filters button{grid-column:1/-1;width:100%}
+}
