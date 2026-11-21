@@ -1,10 +1,29 @@
 import "./globals.css";
+import PwaInstall from "./pwa-install";
 
 export const metadata = {
   title: "NFL Vegas Tracker",
   description: "Historical NFL game results, betting lines, and analytics.",
+  applicationName: "NFL Vegas Tracker",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/icon.svg", type: "image/svg+xml" }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: "NFL Vegas",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport = {
+  themeColor: "#0c1420",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }) {
-  return <html lang="en"><body>{children}</body></html>;
+  return <html lang="en"><body>{children}<PwaInstall /></body></html>;
 }
