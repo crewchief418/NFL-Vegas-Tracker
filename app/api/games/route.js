@@ -56,7 +56,7 @@ export async function GET(request) {
       `SELECT source_game_id, competition_type, season, game_type,
               to_char(game_date, 'YYYY-MM-DD') AS game_date,
               to_char(game_time, 'HH24:MI') AS game_time,
-              away_team, home_team, spread_text, spread_points,
+              away_team, home_team, favorite_team, favorite_spread, spread_text, spread_points,
               away_score, home_score, total_points, covered_team, ats_result,
               source_covered_team
        FROM public.games ${where}
@@ -79,25 +79,34 @@ export async function PATCH(request) {
     }
     const awayScore = body.away_score === "" || body.away_score == null ? null : Number(body.away_score);
     const homeScore = body.home_score === "" || body.home_score == null ? null : Number(body.home_score);
-    const spread = String(body.spread_text || "").trim().toUpperCase() === "PK" ? 0 : (body.spread_points === "" || body.spread_points == null ? null : Number(body.spread_points));
+    const rawSpread = body.favorite_spread === "" || body.favorite_spread == null ? null : Number(body.favorite_spread);
+    const favoriteTeam = body.favorite_team || null;
+    const isPick = String(body.spread_text || "").trim().toUpperCase() === "PK";
     if ((awayScore != null && (!Number.isInteger(awayScore) || awayScore < 0)) ||
         (homeScore != null && (!Number.isInteger(homeScore) || homeScore < 0)) ||
         ((awayScore == null) !== (homeScore == null)) ||
-        (spread != null && !Number.isFinite(spread))) {
-      return NextResponse.json({ error: "Scores must be non-negative whole numbers and entered together. Spread must be numeric." }, { status: 400 });
+        (rawSpread != null && (!Number.isFinite(rawSpread) || rawSpread < 0)) ||
+        (favoriteTeam && ![body.away_team, body.home_team].includes(favoriteTeam)) ||
+        (!isPick && rawSpread != null && rawSpread > 0 && !favoriteTeam) ||
+        (isPick && rawSpread != null && rawSpread !== 0)) {
+      return NextResponse.json({ error: "Choose the favorite team and enter a non-negative spread, or select PK for a pick’em game. Scores must be entered together." }, { status: 400 });
     }
+    const favoriteSpread = isPick ? 0 : rawSpread;
+    const spread = isPick ? 0 : (favoriteSpread == null ? null : favoriteTeam === body.away_team ? -favoriteSpread : favoriteTeam === body.home_team ? favoriteSpread : null);
+    const displaySpread = isPick ? "PK" : favoriteSpread == null ? null : `${favoriteTeam} -${favoriteSpread}`;
     const ats = calculateAts(awayScore, homeScore, spread);
     const total = awayScore == null ? null : awayScore + homeScore;
     const result = await query(
       `UPDATE public.games
        SET away_score = $3, home_score = $4, spread_points = $5,
-           spread_text = $6, total_points = $7, covered_team = $8,
-           ats_result = $9, updated_at = now()
+           spread_text = $6, favorite_team = $7, favorite_spread = $8,
+           total_points = $9, covered_team = $10, ats_result = $11,
+           updated_at = now()
        WHERE competition_type = $1 AND source_game_id = $2
        RETURNING source_game_id`,
       [competition_type, Number(source_game_id), awayScore, homeScore, spread,
-       body.spread_text || (spread == null ? null : String(spread)),
-       total, ats.covered === "away" ? body.away_team : ats.covered === "home" ? body.home_team : null,
+       displaySpread, favoriteTeam, favoriteSpread, total,
+       ats.covered === "away" ? body.away_team : ats.covered === "home" ? body.home_team : null,
        ats.result]
     );
     if (!result.rowCount) return NextResponse.json({ error: "Game not found." }, { status: 404 });
@@ -117,6 +126,16 @@ export async function POST(request) {
         body.away_team.trim() === body.home_team.trim()) {
       return NextResponse.json({ error: "Enter a season, date, two different teams, and competition." }, { status: 400 });
     }
+    const isPick = String(body.spread_text || "").trim().toUpperCase() === "PK";
+    const favoriteTeam = body.favorite_team || null;
+    const favoriteSpread = isPick ? 0 : (body.favorite_spread === "" || body.favorite_spread == null ? null : Number(body.favorite_spread));
+    if ((favoriteSpread != null && (!Number.isFinite(favoriteSpread) || favoriteSpread < 0)) ||
+        (favoriteTeam && ![body.away_team.trim(), body.home_team.trim()].includes(favoriteTeam)) ||
+        (!isPick && favoriteSpread != null && favoriteSpread > 0 && !favoriteTeam)) {
+      return NextResponse.json({ error: "Choose a favorite team and enter a non-negative spread, or select PK." }, { status: 400 });
+    }
+    const spread = isPick ? 0 : favoriteSpread == null ? null : favoriteTeam === body.away_team.trim() ? -favoriteSpread : favoriteSpread;
+    const displaySpread = isPick ? "PK" : favoriteSpread == null ? null : `${favoriteTeam} -${favoriteSpread}`;
     const nextId = await query(
       "SELECT COALESCE(MAX(source_game_id), 1000) + 1 AS next_id FROM public.games WHERE competition_type = $1",
       [body.competition_type]
@@ -124,14 +143,14 @@ export async function POST(request) {
     const result = await query(
       `INSERT INTO public.games
        (competition_type, source_game_id, season, game_type, game_date, game_time,
-        away_team, home_team, spread_text, spread_points, away_score, home_score,
-        total_points, covered_team, ats_result, source_sheet, source_row)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NULL,NULL,NULL,NULL,'unknown','Manual Entry',0)
+        away_team, home_team, favorite_team, favorite_spread, spread_text, spread_points,
+        away_score, home_score, total_points, covered_team, ats_result, source_sheet, source_row)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NULL,NULL,NULL,NULL,'unknown','Manual Entry',0)
        RETURNING source_game_id`,
       [body.competition_type, Number(nextId.rows[0].next_id), Number(body.season),
        body.game_type || null, body.game_date, body.game_time || null,
-       body.away_team.trim(), body.home_team.trim(), body.spread_text || null,
-       String(body.spread_text || "").trim().toUpperCase() === "PK" ? 0 : (body.spread_points === "" || body.spread_points == null ? null : Number(body.spread_points))]
+       body.away_team.trim(), body.home_team.trim(), favoriteTeam, favoriteSpread,
+       displaySpread, spread]
     );
     return NextResponse.json({ success: true, source_game_id: result.rows[0].source_game_id }, { status: 201 });
   } catch (error) {
