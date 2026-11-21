@@ -95,7 +95,10 @@ export default function Home() {
     setBusy(true); setMessage("");
     try {
       const qs=new URLSearchParams({competition});
-      if(season!=="all") qs.set("season",season);
+      // The Game Tracker is a current-season workspace; historical records
+      // are still loaded for every analytics page and remain in the database.
+      if(tab==="Game Tracker") qs.set("season",String(CURRENT_NFL_SEASON));
+      else if(season!=="all") qs.set("season",season);
       if(team!=="all"&&!["Matchup Analyzer","Trend Finder","Game Drill-Down","Streak Tracker"].includes(tab)) qs.set("team",team);
       if(!["Game Drill-Down","Streak Tracker"].includes(tab)){
         if(status==="completed") qs.set("completed","1");
@@ -272,7 +275,7 @@ export default function Home() {
     {menuOpen&&<><button type="button" className="drawer-scrim" aria-label="Close navigation menu" onClick={()=>setMenuOpen(false)}/><aside className="side-drawer" aria-label="Main navigation"><div className="drawer-head"><div><span className="eyebrow">NFL VEGAS TRACKER</span><h2>Navigation</h2></div><button type="button" className="drawer-close" aria-label="Close navigation menu" onClick={()=>setMenuOpen(false)}>×</button></div>{navGroups.map(group=><section className="drawer-group" key={group.label}><h3>{group.label}</h3>{group.items.map(item=><button type="button" key={item} className={tab===item?"selected":""} onClick={()=>{setTab(item);setMenuOpen(false);}}>{item}{tab===item&&<span>●</span>}</button>)}</section>)}</aside></>}
     <section className="panel"><div className="toolbar"><div><h2>{tab}</h2><p>{competition==="all"?"Regular season + playoffs":competition==="regular"?"Regular season":"Playoffs"} · historical game database</p></div><div className="filters">
       <select aria-label="Competition" style={inputStyle} value={competition} onChange={e=>{setCompetition(e.target.value);setSeason("all");setTeam("all");}}><option value="all">Regular + Playoffs</option><option value="regular">Regular Season</option><option value="playoffs">Playoffs</option></select>
-      <select aria-label="Season" style={inputStyle} value={season} onChange={e=>setSeason(e.target.value)}><option value="all">All Seasons</option>{seasons.map(s=><option key={s} value={s}>{s}</option>)}</select>
+      {tab!=="Game Tracker"&&<select aria-label="Season" style={inputStyle} value={season} onChange={e=>setSeason(e.target.value)}><option value="all">All Seasons</option>{seasons.map(s=><option key={s} value={s}>{s}</option>)}</select>}
       {["Team Performance","Against Spread","Over/Under","Points"].includes(tab)&&<TeamPicker value={team} onChange={setTeam} teams={Object.keys(teamAssets)} allowAll placeholder="All Teams" compact/>}
       {tab==="Game Tracker"&&<select aria-label="Game status" style={inputStyle} value={status} onChange={e=>setStatus(e.target.value)}><option value="all">All Games</option><option value="completed">Completed</option><option value="upcoming">Not Played</option></select>}
       {tab==="Game Tracker"&&<button style={buttonStyle} disabled={competition==="all"} title={competition==="all"?"Choose Regular Season or Playoffs to add a game":""} onClick={()=>setShowNew(true)}>+ Add Game</button>}
