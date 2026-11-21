@@ -146,3 +146,5 @@ button:disabled { opacity: .55; cursor: wait !important; }
 }
 
 .clickable-game { cursor:pointer; }.clickable-game:hover { background:#1c2b3e; }
+
+.stat-click { cursor:pointer; transition:transform .15s ease,border-color .15s ease,background .15s ease; }.stat-click:hover { transform:translateY(-2px); border-color:#d8ad4b; background:linear-gradient(145deg,#26364a,#172537); }.stat-click:focus-visible { outline:2px solid #e7b84e; outline-offset:3px; }
