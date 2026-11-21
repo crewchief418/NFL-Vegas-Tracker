@@ -4,7 +4,7 @@ import { query } from "../../../lib/db";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function validCompetition(value) { return value === "regular" || value === "playoffs"; }
+function validCompetition(value) { return value === "regular" || value === "playoffs" || value === "all"; }
 function normalizeTeam(value) {
   const name = String(value || "").trim();
   if (/^redskins$/i.test(name)) return "Commanders";
@@ -33,7 +33,8 @@ export async function GET(request) {
     }
     const competition = searchParams.get("competition") || "regular";
     if (!validCompetition(competition)) return NextResponse.json({error:"Invalid competition type"},{status:400});
-    const values=[competition]; let where="WHERE competition_type=$1";
+    const values=[]; let where="WHERE 1=1";
+    if(competition!=="all"){values.push(competition);where+=` AND competition_type=${values.length}`;}
     const season=searchParams.get("season"), team=searchParams.get("team"), completed=searchParams.get("completed");
     if(season&&/^\d{4}$/.test(season)){values.push(Number(season));where+=` AND season=$${values.length}`;}
     if(team){values.push(team);where+=` AND (away_team=$${values.length} OR home_team=$${values.length})`;}
