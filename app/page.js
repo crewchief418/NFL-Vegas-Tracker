@@ -18,12 +18,12 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [selected, setSelected] = useState(null);
-  const [form, setForm] = useState({ away_score: "", home_score: "", spread_points: "", spread_text: "" });
+  const [form, setForm] = useState({ away_score: "", home_score: "", favorite_team: "", favorite_spread: "", spread_text: "" });
   const [showNew, setShowNew] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [importSecret, setImportSecret] = useState("");
   const [importFile, setImportFile] = useState(null);
-  const [newGame, setNewGame] = useState({ season: new Date().getFullYear(), game_date: "", game_time: "", away_team: "", home_team: "", spread_points: "", spread_text: "", game_type: "" });
+  const [newGame, setNewGame] = useState({ season: new Date().getFullYear(), game_date: "", game_time: "", away_team: "", home_team: "", favorite_team: "", favorite_spread: "", spread_text: "", game_type: "" });
 
   async function loadGames() {
     setBusy(true);
@@ -57,7 +57,8 @@ export default function Home() {
     setForm({
       away_score: game.away_score ?? "",
       home_score: game.home_score ?? "",
-      spread_points: game.spread_points ?? "",
+      favorite_team: game.favorite_team || (Number(game.spread_points) < 0 ? game.away_team : Number(game.spread_points) > 0 ? game.home_team : ""),
+      favorite_spread: game.favorite_spread ?? (game.spread_points == null ? "" : Math.abs(Number(game.spread_points))),
       spread_text: game.spread_text ?? ""
     });
     setMessage("");
@@ -70,7 +71,7 @@ export default function Home() {
     try {
       const response = await fetch("/api/games", {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, competition_type: competition, source_game_id: selectedGame.source_game_id, away_team: selectedGame.away_team, home_team: selectedGame.home_team })
+        body: JSON.stringify({ ...form, spread_text: form.favorite_team === "PK" ? "PK" : "", competition_type: competition, source_game_id: selectedGame.source_game_id, away_team: selectedGame.away_team, home_team: selectedGame.home_team })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Save failed");
@@ -167,8 +168,9 @@ export default function Home() {
               <p className="muted">{selectedGame.game_date} · {selectedGame.season} {selectedGame.game_type || ""}</p>
               <label>{selectedGame.away_team} score<input style={inputStyle} type="number" min="0" value={form.away_score} onChange={e=>setForm({...form,away_score:e.target.value})}/></label>
               <label>{selectedGame.home_team} score<input style={inputStyle} type="number" min="0" value={form.home_score} onChange={e=>setForm({...form,home_score:e.target.value})}/></label>
-              <label>Point spread (away-team perspective)<input style={inputStyle} value={form.spread_points} onChange={e=>setForm({...form,spread_points:e.target.value})} placeholder="e.g. -3.5 or 3.5"/></label>
-              <label>Display spread<input style={inputStyle} value={form.spread_text} onChange={e=>setForm({...form,spread_text:e.target.value})} placeholder="e.g. -3.5 or PK"/></label>
+              <label>Favorite team<select style={inputStyle} value={form.favorite_team} onChange={e=>setForm({...form,favorite_team:e.target.value,spread_text:""})}><option value="">No favorite / select team</option><option value={selectedGame.away_team}>{selectedGame.away_team}</option><option value={selectedGame.home_team}>{selectedGame.home_team}</option><option value="PK">Pick’em (PK)</option></select></label>
+              {form.favorite_team !== "PK" && <label>Spread (points)<input style={inputStyle} type="number" min="0" step="0.5" value={form.favorite_spread} onChange={e=>setForm({...form,favorite_spread:e.target.value,spread_text:""})} placeholder="e.g. 3.5"/></label>}
+              {form.favorite_team === "PK" && <p className="muted">Pick’em game · no team is favored.</p>}
               <div className="editor-meta"><span>Current total</span><b>{form.away_score!=="" && form.home_score!=="" ? Number(form.away_score)+Number(form.home_score) : "—"}</b></div>
               <button style={{...buttonStyle,width:"100%",marginTop:16}} disabled={busy} onClick={saveGame}>{busy?"Saving…":"Update Game Result"}</button>
             </> : <div className="select-prompt"><div>◈</div><h3>Select a game</h3><p>Choose a matchup from the list to edit its score and betting line.</p></div>}
@@ -198,8 +200,9 @@ export default function Home() {
           <label>Time<input style={inputStyle} type="time" value={newGame.game_time} onChange={e=>setNewGame({...newGame,game_time:e.target.value})}/></label>
           <label>Away team<input style={inputStyle} value={newGame.away_team} onChange={e=>setNewGame({...newGame,away_team:e.target.value})} required/></label>
           <label>Home team<input style={inputStyle} value={newGame.home_team} onChange={e=>setNewGame({...newGame,home_team:e.target.value})} required/></label>
-          <label>Spread (away perspective)<input style={inputStyle} value={newGame.spread_points} onChange={e=>setNewGame({...newGame,spread_points:e.target.value})}/></label>
-          <label>Spread display<input style={inputStyle} value={newGame.spread_text} onChange={e=>setNewGame({...newGame,spread_text:e.target.value})} placeholder="PK, -3.5…"/></label>
+          <label>Favorite team<select style={inputStyle} value={newGame.favorite_team} onChange={e=>setNewGame({...newGame,favorite_team:e.target.value,spread_text:""})}><option value="">Select favorite</option><option value={newGame.away_team} disabled={!newGame.away_team}>{newGame.away_team || "Away team"}</option><option value={newGame.home_team} disabled={!newGame.home_team}>{newGame.home_team || "Home team"}</option><option value="PK">Pick’em (PK)</option></select></label>
+          {newGame.favorite_team !== "PK" && <label>Spread (points)<input style={inputStyle} type="number" min="0" step="0.5" value={newGame.favorite_spread} onChange={e=>setNewGame({...newGame,favorite_spread:e.target.value,spread_text:""})} placeholder="e.g. 3.5"/></label>}
+          {newGame.favorite_team === "PK" && <p className="muted">Pick’em · no favorite and no points.</p>}
         </div>
         <div className="modal-actions"><button type="button" className="secondary" onClick={()=>setShowNew(false)}>Cancel</button><button style={buttonStyle} disabled={busy}>{busy?"Creating…":"Create Game"}</button></div>
       </form></div>}
