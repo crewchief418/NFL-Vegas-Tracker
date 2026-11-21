@@ -65,7 +65,7 @@ export default function Home() {
     if(!selectedGame)return;
     setBusy(true);setMessage("");
     try {
-      const response=await fetch("/api/games",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({...form,competition_type:competition,source_game_id:selectedGame.source_game_id,away_team:selectedGame.away_team,home_team:selectedGame.home_team})});
+      const response=await fetch("/api/games",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({...form,competition_type:selectedGame.competition_type,source_game_id:selectedGame.source_game_id,away_team:selectedGame.away_team,home_team:selectedGame.home_team})});
       const data=await response.json();if(!response.ok)throw new Error(data.error||"Save failed");
       setMessage(data.ats_result==="push"?"Saved · ATS push":"Game and betting lines saved");await loadGames();
     }catch(e){setMessage(e.message);}finally{setBusy(false);}
