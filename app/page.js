@@ -21,6 +21,8 @@ const inputStyle = { background: "#111b28", color: "#f3f6fa", border: "1px solid
 const buttonStyle = { background: "#e7b84e", color: "#151b24", border: 0, borderRadius: 8, padding: "10px 15px", fontWeight: 800, cursor: "pointer" };
 function pct(n,d) { return d ? (n/d*100).toFixed(1)+"%" : "—"; }
 function record(w,l,p=0) { return `${w}-${l}${p ? "-"+p : ""}`; }
+const CURRENT_NFL_SEASON = new Date().getFullYear();
+function isGameLocked(game) { return Number(game?.season) < CURRENT_NFL_SEASON; }
 
 
 const teamAssets = {
@@ -116,6 +118,8 @@ export default function Home() {
   const ouGradedCount=completed.filter(g=>g.over_under_line!=null&&g.total_points!=null).length;
 
   function chooseGame(g) {
+    if(isGameLocked(g)) { setMessage(`🔒 ${g.season} season games are locked. Only ${CURRENT_NFL_SEASON} season games can be edited.`); setShowEditor(false); return; }
+    setMessage("");
     setSelected(g);
     setForm({
       away_score:g.away_score??"",home_score:g.home_score??"",
@@ -279,7 +283,7 @@ export default function Home() {
     {tab==="Game Tracker"?<div className="tracker-layout">
       <div className="game-list"><div className="game-search"><input aria-label="Search games" style={inputStyle} placeholder="Search team, date, or game ID…" value={gameSearch} onChange={e=>setGameSearch(e.target.value)}/><span>{visibleGames.length.toLocaleString()} games</span></div><div className="list-head"><span>DATE / MATCHUP</span><span>RESULT</span></div>
         {busy&&!games.length?<p className="empty">Loading games…</p>:visibleGames.map(g=><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}>
-          <span><b>{g.away_team} @ {g.home_team}</b><small>{g.game_date} · {g.game_time||"Time TBD"} · {g.game_type||"Game"}{g.favorite_team? ` · Fav: ${g.favorite_team} -${g.favorite_spread??""}`:""}{g.over_under_line!=null?` · O/U ${g.over_under_line}`:""}</small></span><span className="score">{g.away_score==null?"—":`${g.away_score} - ${g.home_score}`}</span>
+          <span><b>{g.away_team} @ {g.home_team}</b><small>{g.game_date} · {g.game_time||"Time TBD"} · {g.game_type||"Game"}{isGameLocked(g)?" · 🔒 Locked":""}{g.favorite_team? ` · Fav: ${g.favorite_team} -${g.favorite_spread??""}`:""}{g.over_under_line!=null?` · O/U ${g.over_under_line}`:""}</small></span><span className="score">{g.away_score==null?"—":`${g.away_score} - ${g.home_score}`}</span>
         </button>)}
         {!visibleGames.length&&!busy&&<p className="empty">No games match this search and filter.</p>}
       </div>
