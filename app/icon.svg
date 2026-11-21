@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<defs>
+ <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#182b42"/><stop offset="1" stop-color="#080e18"/></linearGradient>
+ <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffe08a"/><stop offset="1" stop-color="#bd8425"/></linearGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="9" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<rect width="512" height="512" rx="112" fill="url(#bg)"/>
+<path d="M30 365 482 146" stroke="#d6a43e" stroke-width="3" opacity=".15"/>
+<path d="M30 410 482 191" stroke="#d6a43e" stroke-width="3" opacity=".1"/>
+<circle cx="256" cy="242" r="167" fill="none" stroke="#d5a23b" stroke-width="8" opacity=".35"/>
+<path d="M95 250c0-83 67-150 150-150 83 0 150 67 150 150s-67 150-150 150c-83 0-150-67-150-150Z" fill="#101d2d" stroke="url(#gold)" stroke-width="8"/>
+<path d="M150 236c42-42 170-42 212 0l-19 81c-6 25-27 42-53 42H222c-27 0-48-17-54-42l-18-81Z" fill="url(#gold)" stroke="#fff0c3" stroke-width="5"/>
+<path d="M176 242c54-22 106-22 160 0M197 255l-19 48m54-55-11 60m47-60 11 60m14-53 19 48" fill="none" stroke="#26364a" stroke-width="10" stroke-linecap="round"/>
+<path d="M236 160h40m-20-20v40" stroke="#f4d27c" stroke-width="9" stroke-linecap="round" opacity=".9"/>
+<text x="256" y="455" text-anchor="middle" fill="#f8f1df" font-family="Arial,sans-serif" font-size="43" font-weight="900" letter-spacing="5">VEGAS</text>
+</svg>
