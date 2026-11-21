@@ -83,3 +83,7 @@ button:disabled { opacity: .55; cursor: wait !important; }
 .performance-table { min-width:850px; }
 @media(max-width:850px) { .performance-cards { grid-template-columns:repeat(2,minmax(0,1fr)); }.performance-splits { grid-template-columns:1fr; } }
 @media(max-width:520px) { .performance-cards { gap:8px; }.performance-card { padding:12px; }.performance-card strong { font-size:21px; }.split-row { grid-template-columns:minmax(0,1fr) auto; gap:5px 10px; }.split-row small { grid-column:2; text-align:right; } }
+
+.h2h-controls { display:grid; grid-template-columns:repeat(2,minmax(180px,260px)); gap:12px; margin:18px 0; }
+.h2h-controls label { display:flex; flex-direction:column; gap:7px; color:#aab8c9; font-size:11px; font-weight:750; }
+@media(max-width:520px){.h2h-controls{grid-template-columns:1fr;}}
