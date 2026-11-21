@@ -29,3 +29,9 @@ The importer skips headings and metadata rows, keeps source sheet/row references
 ## Environment variables
 - `DATABASE_URL`: Neon PostgreSQL connection string. Set this in Vercel project environment settings; never commit it.
 - `IMPORT_SECRET`: Sensitive key required by the historical workbook import endpoint; never commit it.
+
+
+## Install as an app
+NFL Vegas Tracker can be installed as a Progressive Web App (PWA) on supported browsers. Open the production URL and choose **Install App** (or the browser's install option). On iPhone/iPad, open the site in Safari, tap **Share**, then **Add to Home Screen**. The app uses the existing Neon database and does not require an account or login.
+
+The app shell can open from cache when offline, but live game data and edits require an internet connection. API responses are deliberately not cached.
