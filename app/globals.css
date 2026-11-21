@@ -66,3 +66,20 @@ button:disabled { opacity: .55; cursor: wait !important; }
   .score-grid { gap:9px; }
   .editor-nav button { padding:9px 7px; font-size:11px; }
 }
+
+/* Historical team performance */
+.performance-cards { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:22px 0; }
+.performance-card { display:flex; flex-direction:column; gap:7px; padding:16px; border:1px solid #2b3e54; border-radius:11px; background:linear-gradient(145deg,#19283b,#121e2d); }
+.performance-card span { color:#91a3b8; font-size:9px; letter-spacing:1.4px; font-weight:850; }
+.performance-card strong { font-size:25px; font-variant-numeric:tabular-nums; }
+.performance-card small,.bar-row small { color:#8497ad; font-size:10px; }
+.performance-splits { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin:22px 0; }
+.performance-splits>div { min-width:0; padding:17px; border:1px solid #2b3e54; border-radius:11px; background:#101a27; }
+.performance-splits h4 { margin:0 0 14px; font-size:14px; }
+.split-row { display:grid; grid-template-columns:minmax(0,1fr) auto auto auto; gap:12px; align-items:center; padding:12px 0; border-top:1px solid #29394d; font-size:12px; }
+.split-row span { color:#cbd5e1; }.split-row strong { color:#f2c65e; }.split-row small { color:#8497ad; font-size:10px; }
+.bar-row { padding:10px 0; border-top:1px solid #29394d; }.bar-row>div:first-child { display:flex; justify-content:space-between; font-size:12px; margin-bottom:7px; }.bar-row b { color:#f2c65e; }
+.bar-track { height:9px; overflow:hidden; border-radius:99px; background:#26374b; }.bar-track i { display:block; height:100%; border-radius:99px; background:linear-gradient(90deg,#bd8c2e,#f2c65e); }
+.performance-table { min-width:850px; }
+@media(max-width:850px) { .performance-cards { grid-template-columns:repeat(2,minmax(0,1fr)); }.performance-splits { grid-template-columns:1fr; } }
+@media(max-width:520px) { .performance-cards { gap:8px; }.performance-card { padding:12px; }.performance-card strong { font-size:21px; }.split-row { grid-template-columns:minmax(0,1fr) auto; gap:5px 10px; }.split-row small { grid-column:2; text-align:right; } }
