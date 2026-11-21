@@ -163,11 +163,13 @@ export default function Home() {
     };
     const valid=rows.map(game=>({game,result:outcome(game)})).filter(x=>x.result);
     if(!valid.length)return {name,current:0,currentLabel:"—",longest:0,longestLabel:"—",games:0};
-    const target=valid[valid.length-1].result;let current=0;
+    const target=({wins:"W",losses:"L",ats:"C",atsLoss:"C",over:"O",under:"U"})[streakMetric];
+    let current=0;
     for(let i=valid.length-1;i>=0&&valid[i].result===target;i--)current++;
-    let best=0,run=0,last=null,bestLabel="—";
-    for(const x of valid){if(x.result===last)run++;else{last=x.result;run=1;}if(run>best){best=run;bestLabel=x.result;}}
-    return {name,current,currentLabel:target,longest:best,longestLabel:bestLabel,games:valid.length};
+    let best=0,run=0;
+    for(const x of valid){if(x.result===target){run++;best=Math.max(best,run);}else run=0;}
+    const label=({W:"WIN",L:"LOSS",C:streakMetric==="ats"?"COVER":"NO COVER",O:"OVER",U:"UNDER"})[target];
+    return {name,current,currentLabel:current?label:"—",longest:best,longestLabel:best?label:"—",games:valid.length};
   }).sort((a,b)=>b.current-a.current||b.longest-a.longest),[teams,completed,streakMetric]);
   const drillGames=useMemo(()=>completed.filter(g=>{
     const d=drilldown;
