@@ -76,7 +76,7 @@ function pushRow(rows, competition, row, sourceSheet, sourceRow, playoffs=false)
   const scoresPaired = (awayScore == null) === (homeScore == null);
   if (!scoresPaired) return;
   const ats = calcAts(awayScore, homeScore, spread.points, away, home);
-  const sourceCovered = playoffs ? null : normalizeCovered(row[9], away, home);
+  const sourceCovered = playoffs ? null : (cellText(row[9]) || null);
   const season = playoffs ? Number(date.slice(0,4)) - 1 : parseNumber(row[11]);
   if (!Number.isInteger(season)) return;
   rows.push([
