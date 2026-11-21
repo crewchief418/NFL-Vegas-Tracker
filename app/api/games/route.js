@@ -79,7 +79,7 @@ export async function PATCH(request) {
     }
     const awayScore = body.away_score === "" || body.away_score == null ? null : Number(body.away_score);
     const homeScore = body.home_score === "" || body.home_score == null ? null : Number(body.home_score);
-    const spread = body.spread_points === "" || body.spread_points == null ? null : Number(body.spread_points);
+    const spread = String(body.spread_text || "").trim().toUpperCase() === "PK" ? 0 : (body.spread_points === "" || body.spread_points == null ? null : Number(body.spread_points));
     if ((awayScore != null && (!Number.isInteger(awayScore) || awayScore < 0)) ||
         (homeScore != null && (!Number.isInteger(homeScore) || homeScore < 0)) ||
         ((awayScore == null) !== (homeScore == null)) ||
@@ -131,7 +131,7 @@ export async function POST(request) {
       [body.competition_type, Number(nextId.rows[0].next_id), Number(body.season),
        body.game_type || null, body.game_date, body.game_time || null,
        body.away_team.trim(), body.home_team.trim(), body.spread_text || null,
-       body.spread_points === "" || body.spread_points == null ? null : Number(body.spread_points)]
+       String(body.spread_text || "").trim().toUpperCase() === "PK" ? 0 : (body.spread_points === "" || body.spread_points == null ? null : Number(body.spread_points))]
     );
     return NextResponse.json({ success: true, source_game_id: result.rows[0].source_game_id }, { status: 201 });
   } catch (error) {
