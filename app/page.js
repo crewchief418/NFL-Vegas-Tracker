@@ -28,8 +28,10 @@ export default function Home() {
       const qs=new URLSearchParams({competition});
       if(season!=="all") qs.set("season",season);
       if(team!=="all"&&!["Matchup Analyzer","Trend Finder","Game Drill-Down","Streak Tracker"].includes(tab)) qs.set("team",team);
-      if(status==="completed") qs.set("completed","1");
-      if(status==="upcoming") qs.set("completed","0");
+      if(!["Game Drill-Down","Streak Tracker"].includes(tab)){
+        if(status==="completed") qs.set("completed","1");
+        if(status==="upcoming") qs.set("completed","0");
+      }
       const response=await fetch("/api/games?"+qs), data=await response.json();
       if(!response.ok) throw new Error(data.error||"Unable to load games");
       setGames(data.games||[]);
