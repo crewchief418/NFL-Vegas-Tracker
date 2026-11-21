@@ -202,3 +202,36 @@ button:disabled { opacity: .55; cursor: wait !important; }
 .pwa-install-guide small{color:#aebed0}
 .pwa-guide-close{position:absolute;top:7px;right:9px;border:0;background:transparent;color:#b9c5d3;font-size:23px;cursor:pointer}
 @media(max-width:600px){.pwa-install-wrap{right:12px;bottom:calc(12px + env(safe-area-inset-bottom))}.pwa-install-button{padding:10px 14px}}
+
+/* Matchup Analyzer mobile refinements */
+.matchup-selectors,.matchup-selectors>*{min-width:0}
+.matchup-selectors .team-picker-menu{max-width:min(560px,calc(100vw - 28px));}
+.matchup-history-mobile{display:none}
+@media(max-width:600px){
+  .matchup-hero{min-width:0;padding:16px 12px}
+  .matchup-selectors{grid-template-columns:minmax(0,1fr) 30px minmax(0,1fr);gap:6px;width:100%;max-width:100%}
+  .matchup-selectors>label{min-width:0;letter-spacing:1px;font-size:8px}
+  .matchup-selectors .team-picker{min-width:0}
+  .matchup-selectors .team-picker-trigger{gap:6px;padding:6px;min-height:44px}
+  .matchup-selectors .team-picker-logo,.matchup-selectors .team-picker-empty{width:25px;height:25px;flex-basis:25px}
+  .matchup-selectors .team-picker-current{font-size:11px}
+  .matchup-selectors label:last-child .team-picker-menu{left:auto;right:0}
+  .matchup-selectors .team-picker-menu{width:min(340px,calc(100vw - 28px));padding:9px}
+  .matchup-selectors .team-picker-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .matchup-scoreboard{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:4px}
+  .matchup-scoreboard>div{min-width:0}
+  .matchup-scoreboard span{font-size:12px;overflow-wrap:anywhere}
+  .matchup-scoreboard strong{font-size:clamp(25px,8vw,34px)}
+  .matchup-center{padding:7px 6px}
+  .matchup-center b{font-size:20px}
+  .matchup-history-table{display:none}
+  .matchup-history-mobile{display:grid;gap:9px;margin:12px 0}
+  .matchup-game-card{display:block;width:100%;min-width:0;padding:12px;border:1px solid #30445c;border-radius:11px;background:linear-gradient(145deg,#19283b,#111b29);color:#edf2f8;text-align:left}
+  .matchup-game-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .matchup-game-top b{font-size:12px;min-width:0;overflow-wrap:anywhere}
+  .matchup-game-top>span{color:#91a3b8;font-size:10px;white-space:nowrap}
+  .matchup-game-score{margin:8px 0;color:#f2c65e;font-size:24px;font-weight:900;font-variant-numeric:tabular-nums}
+  .matchup-game-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .matchup-game-details>span{display:flex;flex-direction:column;gap:3px;font-size:11px;min-width:0;overflow-wrap:anywhere}
+  .matchup-game-details small{color:#8497ad;font-size:8px;letter-spacing:1px;font-weight:850}
+}
