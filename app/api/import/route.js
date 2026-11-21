@@ -10,6 +10,12 @@ function cellText(v) {
   if (v == null) return "";
   return String(v).trim();
 }
+function normalizeTeam(v) {
+  const name = cellText(v);
+  if (/^redskins$/i.test(name)) return "Commanders";
+  if (/^patriors$/i.test(name)) return "Patriots";
+  return name;
+}
 function parseDate(v) {
   if (v instanceof Date && !Number.isNaN(v.getTime())) return v.toISOString().slice(0,10);
   if (typeof v === "number") {
@@ -66,8 +72,8 @@ function normalizeCovered(v, away, home) {
 function pushRow(rows, competition, row, sourceSheet, sourceRow, playoffs=false) {
   const id = parseNumber(row[0]);
   const date = parseDate(row[1]);
-  const away = cellText(row[playoffs ? 3 : 3]);
-  const home = cellText(row[playoffs ? 4 : 4]);
+  const away = normalizeTeam(row[3]);
+  const home = normalizeTeam(row[4]);
   if (!Number.isInteger(id) || !date || !away || !home || away === home) return;
   const matchup = away + " " + home;
   const spread = parseSpread(row[5], matchup, date);
@@ -76,13 +82,15 @@ function pushRow(rows, competition, row, sourceSheet, sourceRow, playoffs=false)
   const scoresPaired = (awayScore == null) === (homeScore == null);
   if (!scoresPaired) return;
   const ats = calcAts(awayScore, homeScore, spread.points, away, home);
-  const sourceCovered = playoffs ? null : (cellText(row[9]) || null);
+  const sourceCovered = playoffs ? null : normalizeCovered(row[9], away, home);
   const season = playoffs ? Number(date.slice(0,4)) - 1 : parseNumber(row[11]);
   if (!Number.isInteger(season)) return;
+  const actualTotal = awayScore == null ? null : awayScore + homeScore;
+  const overUnderLine = parseNumber(row[8]);
   rows.push([
     competition, id, season, playoffs ? "Playoffs" : (cellText(row[12]) || null),
     date, parseTime(row[2]), away, home, spread.text, spread.points,
-    awayScore, homeScore, parseNumber(row[playoffs ? 8 : 8]),
+    awayScore, homeScore, actualTotal, overUnderLine,
     ats.covered, ats.result, sourceCovered, sourceSheet, sourceRow
   ]);
 }
@@ -117,7 +125,7 @@ export async function POST(request) {
     const existing = await query("SELECT COUNT(*)::int AS count FROM public.games");
     const before = existing.rows[0].count;
     let inserted = 0;
-    const columns = 18;
+    const columns = 19;
     for (let offset=0; offset<rows.length; offset+=300) {
       const batch = rows.slice(offset,offset+300);
       const values = [];
@@ -129,10 +137,14 @@ export async function POST(request) {
       const result = await query(
         `INSERT INTO public.games
          (competition_type,source_game_id,season,game_type,game_date,game_time,away_team,home_team,
-          spread_text,spread_points,away_score,home_score,total_points,covered_team,ats_result,
+          spread_text,spread_points,away_score,home_score,total_points,over_under_line,covered_team,ats_result,
           source_covered_team,source_sheet,source_row)
          VALUES ${tuples.join(",")}
-         ON CONFLICT (competition_type,source_game_id) DO NOTHING`,
+         ON CONFLICT (competition_type,source_game_id) DO UPDATE SET
+          away_team=EXCLUDED.away_team, home_team=EXCLUDED.home_team,
+          away_score=EXCLUDED.away_score, home_score=EXCLUDED.home_score,
+          total_points=EXCLUDED.total_points, over_under_line=EXCLUDED.over_under_line,
+          source_covered_team=EXCLUDED.source_covered_team, source_sheet=EXCLUDED.source_sheet, source_row=EXCLUDED.source_row`,
         values
       );
       inserted += result.rowCount;
@@ -141,7 +153,7 @@ export async function POST(request) {
     return NextResponse.json({
       success:true, parsed:rows.length, inserted, alreadyPresent:rows.length-inserted,
       before, counts:counts.rows,
-      note:"Original Covered values are preserved in source_covered_team; computed ATS outcomes are stored separately. Missing totals remain NULL."
+      note:"Column I (Total) is imported as the Vegas over/under line; total_points is calculated from the final scores. Redskins are normalized to Commanders and Patriors to Patriots."
     });
   } catch (error) {
     console.error("POST /api/import:", error);
