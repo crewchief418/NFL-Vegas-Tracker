@@ -53,6 +53,10 @@ export async function PATCH(request) {
   try {
     const body=await request.json(), {competition_type,source_game_id}=body;
     if(!validCompetition(competition_type)||!Number.isInteger(Number(source_game_id)))return NextResponse.json({error:"A valid game identity is required."},{status:400});
+    const currentSeason=new Date().getFullYear();
+    const existing=await query("SELECT season FROM public.games WHERE competition_type=$1 AND source_game_id=$2",[competition_type,Number(source_game_id)]);
+    if(!existing.rowCount)return NextResponse.json({error:"Game not found."},{status:404});
+    if(Number(existing.rows[0].season)<currentSeason)return NextResponse.json({error:`${existing.rows[0].season} season games are locked. Only ${currentSeason} season games can be edited.`},{status:403});
     const awayScore=numericOrNull(body.away_score), homeScore=numericOrNull(body.home_score);
     const favoriteSpread=numericOrNull(body.favorite_spread), overUnder=numericOrNull(body.over_under_line);
     const isPick=body.favorite_team==="PK"||String(body.spread_text||"").trim().toUpperCase()==="PK";
