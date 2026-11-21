@@ -80,7 +80,7 @@ export async function PATCH(request) {
     const awayScore = body.away_score === "" || body.away_score == null ? null : Number(body.away_score);
     const homeScore = body.home_score === "" || body.home_score == null ? null : Number(body.home_score);
     const rawSpread = body.favorite_spread === "" || body.favorite_spread == null ? null : Number(body.favorite_spread);
-    const favoriteTeam = body.favorite_team || null;
+    const favoriteTeam = body.favorite_team === "PK" ? null : (body.favorite_team || null);
     const isPick = String(body.spread_text || "").trim().toUpperCase() === "PK";
     if ((awayScore != null && (!Number.isInteger(awayScore) || awayScore < 0)) ||
         (homeScore != null && (!Number.isInteger(homeScore) || homeScore < 0)) ||
