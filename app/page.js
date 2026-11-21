@@ -19,7 +19,7 @@ export default function Home() {
   const [message, setMessage] = useState("");
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState({ away_score: "", home_score: "", spread_points: "", spread_text: "" });
-  const [showNew, setShowNew] = useState(false);
+  const [showNew, setShowNew] = useState(false);\n  const [showImport, setShowImport] = useState(false);\n  const [importSecret, setImportSecret] = useState("");\n  const [importFile, setImportFile] = useState(null);
   const [newGame, setNewGame] = useState({ season: new Date().getFullYear(), game_date: "", game_time: "", away_team: "", home_team: "", spread_points: "", spread_text: "", game_type: "" });
 
   async function loadGames() {
@@ -77,6 +77,27 @@ export default function Home() {
     finally { setBusy(false); }
   }
 
+  async function importWorkbook(e) {
+    e.preventDefault();
+    if (!importFile || !importSecret) { setMessage("Choose the workbook and enter the import key."); return; }
+    setBusy(true); setMessage("");
+    try {
+      const body = new FormData();
+      body.append("file", importFile);
+      const response = await fetch("/api/import", { method:"POST", headers:{"x-import-secret":importSecret}, body });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Import failed");
+      setShowImport(false);
+      setImportSecret("");
+      setImportFile(null);
+      const summary = (data.counts || []).map(x => `${x.count} ${x.competition_type}`).join(" · ");
+      setMessage(`Workbook import complete: ${data.inserted.toLocaleString()} added, ${data.alreadyPresent.toLocaleString()} already existed. ${summary}`);
+      setSeason("all"); setTeam("all"); setStatus("all");
+      await loadGames();
+    } catch (e) { setMessage(e.message); }
+    finally { setBusy(false); }
+  }
+
   async function createGame(e) {
     e.preventDefault(); setBusy(true); setMessage("");
     try {
@@ -123,7 +144,7 @@ export default function Home() {
             <select style={inputStyle} value={season} onChange={e=>setSeason(e.target.value)}><option value="all">All Seasons</option>{seasons.map(s=><option key={s} value={s}>{s}</option>)}</select>
             <select style={inputStyle} value={team} onChange={e=>setTeam(e.target.value)}><option value="all">All Teams</option>{teams.map(t=><option key={t}>{t}</option>)}</select>
             <select style={inputStyle} value={status} onChange={e=>setStatus(e.target.value)}><option value="all">All Games</option><option value="completed">Completed</option><option value="upcoming">Not Played</option></select>
-            <button style={buttonStyle} onClick={()=>setShowNew(true)}>+ Add Game</button>
+            <button className="secondary" onClick={()=>setShowImport(true)}>Import Workbook</button><button style={buttonStyle} onClick={()=>setShowNew(true)}>+ Add Game</button>
           </div>
         </div>
         {message && <div className="notice">{message}</div>}
@@ -158,6 +179,13 @@ export default function Home() {
           <p className="muted">The detailed original Win/Loss, Against the Spread, Over/Under, and Points calculations are still being ported from the spreadsheet logic. This view does not substitute guessed calculations for those original reports.</p>
         </div>}
       </section>
+      {showImport && <div className="modal-backdrop" onClick={()=>setShowImport(false)}><form className="modal" onSubmit={importWorkbook} onClick={e=>e.stopPropagation()}>
+        <div className="modal-head"><div><span className="eyebrow">HISTORICAL DATA</span><h2>Import NFL Scores workbook</h2></div><button type="button" className="close" onClick={()=>setShowImport(false)}>×</button></div>
+        <p className="muted">Select the original NFL Scores.xlsx file. The importer reads only Data_Picks and Playoff_Data_Picks, skips season-heading rows, and avoids duplicate game IDs.</p>
+        <label>Workbook file<input style={inputStyle} type="file" accept=".xlsx,.xls" onChange={e=>setImportFile(e.target.files?.[0] || null)} required/></label>
+        <label>One-time import key<input style={inputStyle} type="password" autoComplete="off" value={importSecret} onChange={e=>setImportSecret(e.target.value)} required/></label>
+        <div className="modal-actions"><button type="button" className="secondary" onClick={()=>setShowImport(false)}>Cancel</button><button style={buttonStyle} disabled={busy}>{busy?"Importing…":"Import workbook"}</button></div>
+      </form></div>}
       {showNew && <div className="modal-backdrop" onClick={()=>setShowNew(false)}><form className="modal" onSubmit={createGame} onClick={e=>e.stopPropagation()}>
         <div className="modal-head"><div><span className="eyebrow">MANUAL ENTRY</span><h2>Add New Game</h2></div><button type="button" className="close" onClick={()=>setShowNew(false)}>×</button></div>
         <div className="form-grid">
