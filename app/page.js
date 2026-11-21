@@ -211,6 +211,7 @@ export default function Home() {
       <button style={buttonStyle} disabled={competition==="all"} title={competition==="all"?"Choose Regular Season or Playoffs to add a game":""} onClick={()=>setShowNew(true)}>+ Add Game</button>
     </div></div>
     {message&&<div className="notice">{message}</div>}
+    {toast&&<div className="save-toast" role="status" aria-live="polite"><span className="save-toast-mark">✓</span>{toast}</div>}
     {tab==="Game Tracker"?<div className="tracker-layout">
       <div className="game-list"><div className="game-search"><input aria-label="Search games" style={inputStyle} placeholder="Search team, date, or game ID…" value={gameSearch} onChange={e=>setGameSearch(e.target.value)}/><span>{visibleGames.length.toLocaleString()} games</span></div><div className="list-head"><span>DATE / MATCHUP</span><span>RESULT</span></div>
         {busy&&!games.length?<p className="empty">Loading games…</p>:visibleGames.map(g=><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}>
