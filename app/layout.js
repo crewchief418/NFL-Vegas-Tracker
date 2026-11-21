@@ -7,7 +7,7 @@ export const metadata = {
   applicationName: "NFL Vegas Tracker",
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    icon: [{ url: "/icon-192.png", type: "image/svg+xml" }],
     apple: [{ url: "/icon.svg", type: "image/svg+xml" }],
   },
   appleWebApp: {
