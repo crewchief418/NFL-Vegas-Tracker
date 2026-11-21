@@ -17,7 +17,7 @@ function record(w,l,p=0) { return `${w}-${l}${p ? "-"+p : ""}`; }
 
 export default function Home() {
   const [tab,setTab]=useState("Game Tracker"), [competition,setCompetition]=useState("regular"), [season,setSeason]=useState("all"), [team,setTeam]=useState("all"), [status,setStatus]=useState("all"), [opponent,setOpponent]=useState("all"), [matchupA,setMatchupA]=useState("Bills"), [matchupB,setMatchupB]=useState("Dolphins"), [trendMetric,setTrendMetric]=useState("ats"), [trendWindow,setTrendWindow]=useState("10"), [streakMetric,setStreakMetric]=useState("wins"), [drilldown,setDrilldown]=useState({team:"all",metric:"all",label:"All completed games"});
-  const [games,setGames]=useState([]), [busy,setBusy]=useState(false), [message,setMessage]=useState(""), [selected,setSelected]=useState(null), [showEditor,setShowEditor]=useState(false), [gameSearch,setGameSearch]=useState("");
+  const [games,setGames]=useState([]), [busy,setBusy]=useState(false), [message,setMessage]=useState(""), [toast,setToast]=useState(""), [selected,setSelected]=useState(null), [showEditor,setShowEditor]=useState(false), [gameSearch,setGameSearch]=useState("");
   const [form,setForm]=useState({away_score:"",home_score:"",favorite_team:"",favorite_spread:"",spread_text:"",over_under_line:""});
   const [showNew,setShowNew]=useState(false);
   const [newGame,setNewGame]=useState({season:new Date().getFullYear(),game_date:"",game_time:"",away_team:"",home_team:"",favorite_team:"",favorite_spread:"",spread_text:"",over_under_line:"",game_type:""});
@@ -39,6 +39,7 @@ export default function Home() {
     } catch(e) { setMessage(e.message); } finally { setBusy(false); }
   }
   useEffect(()=>{loadGames();},[competition,season,team,status,tab]);
+  useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(""),2600);return ()=>clearTimeout(timer);},[toast]);
   const seasons=useMemo(()=>[...new Set(games.map(g=>g.season))].sort((a,b)=>b-a),[games]);
   const teams=useMemo(()=>[...new Set(games.flatMap(g=>[g.away_team,g.home_team]))].sort(),[games]);
   const completed=games.filter(g=>g.away_score!=null&&g.home_score!=null);
@@ -69,7 +70,7 @@ export default function Home() {
     try {
       const response=await fetch("/api/games",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({...form,competition_type:selectedGame.competition_type,source_game_id:selectedGame.source_game_id,away_team:selectedGame.away_team,home_team:selectedGame.home_team})});
       const data=await response.json();if(!response.ok)throw new Error(data.error||"Save failed");
-      setMessage(data.ats_result==="push"?"Saved · ATS push":"Game and betting lines saved");await loadGames();
+      setShowEditor(false);setToast(data.ats_result==="push"?"Saved · ATS push":"Game saved");await loadGames();
     }catch(e){setMessage(e.message);}finally{setBusy(false);}
   }
   async function createGame(e) {
