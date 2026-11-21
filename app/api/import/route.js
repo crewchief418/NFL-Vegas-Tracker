@@ -63,7 +63,7 @@ function calcAts(away, home, spread, awayTeam, homeTeam) {
   return margin > 0 ? { covered:awayTeam, result:"away" } : { covered:homeTeam, result:"home" };
 }
 function normalizeCovered(v, away, home) {
-  const value = cellText(v);
+  const value = normalizeTeam(v);
   if (!value) return null;
   if (value.toLowerCase() === away.toLowerCase()) return away;
   if (value.toLowerCase() === home.toLowerCase()) return home;
@@ -144,6 +144,7 @@ export async function POST(request) {
           away_team=EXCLUDED.away_team, home_team=EXCLUDED.home_team,
           away_score=EXCLUDED.away_score, home_score=EXCLUDED.home_score,
           total_points=EXCLUDED.total_points, over_under_line=EXCLUDED.over_under_line,
+          covered_team=EXCLUDED.covered_team, ats_result=EXCLUDED.ats_result,
           source_covered_team=EXCLUDED.source_covered_team, source_sheet=EXCLUDED.source_sheet, source_row=EXCLUDED.source_row`,
         values
       );
