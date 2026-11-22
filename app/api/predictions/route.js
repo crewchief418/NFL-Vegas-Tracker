@@ -21,11 +21,15 @@ async function buildReport() {
   return buildPredictionReport(history, upcoming);
 }
 async function getPerformance() {
-  const result = await query(`SELECT p.*,g.away_score,g.home_score,g.total_points AS actual_total,
-    g.ats_result
-    FROM public.market_predictions p
+  const result = await query(`WITH latest AS (
+      SELECT DISTINCT ON (competition_type,source_game_id) *
+      FROM public.market_predictions
+      WHERE model_version=$1
+      ORDER BY competition_type,source_game_id,generated_at DESC,id DESC
+    )
+    SELECT p.*,g.away_score,g.home_score,g.total_points AS actual_total,g.ats_result
+    FROM latest p
     LEFT JOIN public.games g ON g.competition_type=p.competition_type AND g.source_game_id=p.source_game_id
-    WHERE p.model_version=$1
     ORDER BY p.game_date DESC,p.game_time DESC NULLS LAST`,[MODEL_VERSION]);
   const scored = result.rows.filter(row => row.away_score != null && row.home_score != null);
   const winnerRows = scored.filter(row => Number(row.home_score) !== Number(row.away_score));
