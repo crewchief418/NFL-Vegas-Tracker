@@ -74,9 +74,7 @@ function currentNflWeekWindow(dateText) {
   const start = date.toISOString().slice(0,10);
   date.setUTCDate(date.getUTCDate() + 6);
   const end = date.toISOString().slice(0,10);
-  // Forecast the current NFL week plus the following week, never the full season.
-  date.setUTCDate(date.getUTCDate() + 7);
-  return { start, end, forecastEnd: date.toISOString().slice(0,10) };
+  return { start, end, forecastEnd: end };
 }
 async function buildReport() {
   const games = await loadGames();
