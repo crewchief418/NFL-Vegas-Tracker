@@ -28,9 +28,9 @@ async function loadExternalContext(upcoming) {
       CASE WHEN season_type='POST' THEN 0 ELSE 1 END,week DESC`,[currentSeason]),
     query(`WITH ranked AS (
       SELECT team,player_id,player_name,position,season,season_type,week,payload,
-      ROW_NUMBER() OVER(PARTITION BY team,player_id ORDER BY season DESC,week DESC) AS rn
+      ROW_NUMBER() OVER(PARTITION BY team,player_id ORDER BY CASE WHEN season_type='POST' THEN 0 ELSE 1 END,week DESC) AS rn
       FROM public.nflverse_player_weekly_stats WHERE position='QB' AND season=$1
-    ) SELECT team,player_id,player_name,position,season,season_type,week,payload FROM ranked WHERE rn <= 6 ORDER BY team,player_name,season DESC,week DESC`,[currentSeason]),
+    ) SELECT team,player_id,player_name,position,season,season_type,week,payload FROM ranked WHERE rn <= 6 ORDER BY team,player_name,CASE WHEN season_type='POST' THEN 0 ELSE 1 END,week DESC`,[currentSeason]),
     query(`SELECT team,player_id,player_name,position,report_status,practice_status,injury,week
       FROM public.nflverse_injury_reports
       WHERE season=$1
