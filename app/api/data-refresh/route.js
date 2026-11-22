@@ -4,7 +4,7 @@ import { refreshExternalData } from "../../../lib/external-data";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 function authorized(request){
   const secret=process.env.CRON_SECRET;
