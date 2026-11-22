@@ -18,7 +18,7 @@ async function loadGames() {
   return result.rows;
 }
 async function loadExternalContext(upcoming) {
-  const currentSeason = new Date().getUTCFullYear();
+  const currentSeason = Number(upcoming[0]?.season) || new Date().getUTCFullYear();
   const [teamResult, qbResult, injuryResult, weatherResult, syncResult] = await Promise.all([
     query(`WITH ranked AS (
       SELECT team,season,season_type,week,payload,ROW_NUMBER() OVER(PARTITION BY team ORDER BY season DESC,
