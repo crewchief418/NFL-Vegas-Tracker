@@ -120,7 +120,7 @@ export default function Home() {
       const response=await fetch("/api/closing-lines",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({retry})});
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"Unable to refresh ESPN closing lines");
-      setClosingLineRefreshMessage(`ESPN batch: ${Number(data.updated||0)} games updated · ${Number(data.totalLines||0).toLocaleString()} total lines saved · ${Number(data.remaining||0).toLocaleString()} still waiting.${retry?` ${Number(data.unmatched||0)} unmatched and ${Number(data.noOdds||0)} without odds in this retry batch.`:""}`);
+      setClosingLineRefreshMessage(`ESPN batch: ${Number(data.updated||0)} games updated · ${Number(data.unmatched||0)} unmatched · ${Number(data.noOdds||0)} without odds · ${Number(data.totalLines||0).toLocaleString()} total lines saved · ${Number(data.remaining||0).toLocaleString()} still waiting.`);
       await loadGames();
       setPredictionRefresh(value=>value+1);
     }catch(error){setClosingLineRefreshMessage(error.message);}
