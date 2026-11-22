@@ -3,6 +3,10 @@
     {
       "path": "/api/data-refresh",
       "schedule": "15 8 * * *"
+    },
+    {
+      "path": "/api/closing-lines",
+      "schedule": "45 8 * * *"
     }
   ]
 }
