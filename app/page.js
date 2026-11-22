@@ -321,6 +321,7 @@ export default function Home() {
     return {rows,marginRows};
   },[teams,completed]);
   const focusedPerformance=team==="all"?null:performanceInsights.rows.find(r=>r.name===team);
+  const visiblePredictions=showAllPredictions?(predictionData?.upcoming||[]):(predictionData?.upcoming||[]).slice(0,16);
 
   function analyticsTable() {
     let headers=[], cells= r=>[];
@@ -384,7 +385,7 @@ export default function Home() {
         <section className="prediction-phase">
           <div className="prediction-phase-head"><span className="prediction-phase-number">02</span><div><span className="eyebrow">PHASE 2 · UPCOMING GAMES</span><h3>Pregame predictions</h3><p>Forecasts are saved before kickoff. Adding or changing a spread or total creates a separate market snapshot instead of overwriting the earlier forecast.</p></div></div>
           {predictionData.upcoming.length===0?<div className="viz-card"><p className="empty">No future games are currently scheduled in the tracker.</p></div>:<div className="prediction-game-grid">
-            {predictionData.upcoming.slice(0,showAllPredictions?undefined:16).map(game=>{
+            {visiblePredictions.map(game=>{
               const homePct=Math.round(game.predicted_home_win_probability*100),awayPct=100-homePct;
               const homeScore=(game.predicted_total_points+game.predicted_home_margin)/2,awayScore=game.predicted_total_points-homeScore;
               const favorite=homePct>=50?game.home_team:game.away_team;
