@@ -46,6 +46,13 @@ const teamAssets = {
   Saints:["NFC","New Orleans Saints","new-orleans-saints","#d3bc8d"], Buccaneers:["NFC","Tampa Bay Buccaneers","tampa-bay-buccaneers","#d50a0a"],
   Cardinals:["NFC","Arizona Cardinals","arizona-cardinals","#97233f"], Rams:["NFC","Los Angeles Rams","los-angeles-rams","#003594"],
   "49ers":["NFC","San Francisco 49ers","san-francisco-49ers","#aa0000"], Seahawks:["NFC","Seattle Seahawks","seattle-seahawks","#002244"]
+}
+function formatGameTime(value) {
+  if(!value)return "Time TBD";
+  const parts=String(value).slice(0,5).split(":");
+  if(parts.length!==2)return String(value);
+  const hour=Number(parts[0]);
+  return (hour%12||12)+":"+parts[1]+" "+(hour>=12?"PM":"AM")+" ET";
 };
 function teamLogoUrl(team) {
   const info=teamAssets[team];
@@ -414,7 +421,7 @@ export default function Home() {
           </div>
         </section>
         <section className="prediction-phase">
-          <div className="prediction-phase-head"><span className="prediction-phase-number">02</span><div><span className="eyebrow">PHASE 2 · UPCOMING GAMES</span><h3>Pregame predictions</h3><p>Forecasts are saved before kickoff. Adding or changing a spread or total creates a separate market snapshot instead of overwriting the earlier forecast.</p></div></div>
+          <div className="prediction-phase-head"><span className="prediction-phase-number">02</span><div><span className="eyebrow">PHASE 2 · UPCOMING GAMES</span><h3>Pregame predictions</h3><p>Only games in the current NFL week are shown. Forecasts are saved before kickoff; adding or changing a spread or total creates a separate market snapshot.</p></div></div>
           {predictionData.upcoming.length===0?<div className="viz-card"><p className="empty">No upcoming games remain in the current NFL week.</p></div>:<div className="prediction-game-grid">
             {visiblePredictions.map(game=>{
               const homePct=Math.round(game.predicted_home_win_probability*100),awayPct=100-homePct;
@@ -423,7 +430,7 @@ export default function Home() {
               const spreadEdge=game.spread_points==null?null:game.predicted_home_margin-game.spread_points;
               const totalEdge=game.over_under_line==null?null:game.predicted_total_points-game.over_under_line;
               return <article className="prediction-game-card" key={game.competition_type+"-"+game.source_game_id}>
-                <div className="prediction-game-meta"><span>{formatDate(game.game_date)}</span><span className={"prediction-confidence "+game.confidence.toLowerCase()}>{game.confidence} confidence</span></div>
+                <div className="prediction-game-meta"><span>{formatDate(game.game_date)} · {formatGameTime(game.game_time)}</span><span className={"prediction-confidence "+game.confidence.toLowerCase()}>{game.confidence} confidence</span></div>
                 <div className="prediction-matchup"><div><small>AWAY</small><b>{game.away_team}</b><strong>{awayScore.toFixed(1)}</strong></div><span className="prediction-at">@</span><div><small>HOME</small><b>{game.home_team}</b><strong>{homeScore.toFixed(1)}</strong></div></div>
                 <div className="prediction-win-label"><span>WIN PROBABILITY</span><b>{awayPct}% — {homePct}%</b></div>
                 <div className="prediction-win-track"><i style={{width:awayPct+"%"}}/><i style={{width:homePct+"%"}}/></div>
