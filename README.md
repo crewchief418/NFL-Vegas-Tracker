@@ -63,3 +63,14 @@ The refresh job runs daily at 08:15 UTC using Vercel Cron. Market Predictions al
 The first external-data refresh runs at the next scheduled time after deployment. Data feed health and record counts are shown in Market Predictions. Upcoming forecasts use the newest imported team, player, injury, and weather context. The historical backtest remains the original game-history-only baseline until historical point-in-time external snapshots can be reconstructed; do not compare the contextual live forecast version to that baseline as though they were identical models.
 
 Open-Meteo's no-key API is free for non-commercial use and its data is licensed under CC BY 4.0; attribution is required wherever weather is displayed. Before using this feed in a commercial or monetized version of the app, review Open-Meteo's commercial-use terms and move to an appropriate paid plan or licensed source. nflverse datasets are community-maintained public data; see the [nflverse data schedule](https://nflreadr.nflverse.com/articles/nflverse_data_schedule.html) for refresh timing and source details.
+
+
+## ESPN closing lines
+
+The app can import the highest-priority sportsbook closing spread and game total from ESPN's public, undocumented NFL odds endpoints. Completed games are matched to ESPN events by game date and both teams. ESPN's provider priority is used to select one sportsbook consistently; live-only and model providers are excluded.
+
+Closing values are stored separately from manually entered lines in `public.games` (`closing_spread_points`, `closing_over_under_line`, `closing_favorite_team`, `closing_provider`). The existing manual spread and total fields are preserved. Where an ESPN closing value exists, it becomes the default line used by ATS, over/under, team splits, trends, and prediction history; otherwise the app falls back to the manually entered line. The game editor continues to edit the manual values and displays ESPN's closing line separately.
+
+The scheduled job runs daily at 08:45 UTC through `/api/closing-lines`. The endpoint requires the same sensitive `CRON_SECRET` used by the existing data refresh. The Market Predictions page also has **Refresh ESPN closing lines**, which imports up to 80 completed games per batch; run it again after the five-minute manual refresh cooldown to continue the historical backfill. ESPN requests are rate-limited to a small concurrency.
+
+ESPN's historical coverage varies. Its odds feed has broad historical sportsbook coverage from around 2014; explicit opening/closing snapshots are available in newer data, while older completed-game odds are taken from the provider's final pregame snapshot where available. The 2013 season is not included in this ESPN backfill. Games with no matching event or no usable odds are marked separately rather than having a made-up line. ESPN's odds endpoints are undocumented and may change without notice; this feed is not an official ESPN integration.
