@@ -26,7 +26,7 @@ async function buildReport() {
   const upcoming = games.filter(game => {
     if (game.away_score != null || game.home_score != null) return false;
     const date = String(game.game_date).slice(0,10);
-    return date > now.date || (date === now.date && (!game.game_time || String(game.game_time) > now.time));
+    return date > now.date || (date === now.date && Boolean(game.game_time) && String(game.game_time) > now.time);
   });
   return buildPredictionReport(history, upcoming);
 }
