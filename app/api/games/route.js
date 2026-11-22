@@ -42,8 +42,18 @@ export async function GET(request) {
     if(completed==="0")where+=" AND away_score IS NULL";
     const result=await query(`SELECT source_game_id,competition_type,season,game_type,
       to_char(game_date,'YYYY-MM-DD') AS game_date,to_char(game_time,'HH24:MI') AS game_time,
-      away_team,home_team,favorite_team,favorite_spread,spread_text,spread_points,
-      away_score,home_score,total_points,over_under_line,covered_team,ats_result,source_covered_team
+      away_team,home_team,
+      COALESCE(closing_favorite_team,favorite_team,CASE WHEN closing_spread_points>0 THEN home_team WHEN closing_spread_points<0 THEN away_team END) AS favorite_team,
+      COALESCE(ABS(closing_spread_points),favorite_spread) AS favorite_spread,
+      CASE WHEN closing_spread_points IS NOT NULL THEN CASE WHEN closing_spread_points=0 THEN 'PK'
+        ELSE COALESCE(closing_favorite_team,CASE WHEN closing_spread_points>0 THEN home_team ELSE away_team END)||' -'||ABS(closing_spread_points)::text END
+        ELSE spread_text END AS spread_text,
+      COALESCE(closing_spread_points,spread_points) AS spread_points,
+      spread_points AS manual_spread_points,favorite_team AS manual_favorite_team,favorite_spread AS manual_favorite_spread,
+      over_under_line AS manual_over_under_line,closing_spread_points,closing_over_under_line,closing_favorite_team,
+      closing_provider,closing_line_status,closing_updated_at,
+      away_score,home_score,total_points,COALESCE(closing_over_under_line,over_under_line) AS over_under_line,
+      covered_team,ats_result,source_covered_team
       FROM public.games ${where} ORDER BY game_date,game_time NULLS LAST,source_game_id`,values);
     return NextResponse.json({games:result.rows});
   } catch(error){console.error("GET /api/games:",error);return NextResponse.json({error:"Unable to load games from the database."},{status:500});}
@@ -54,7 +64,7 @@ export async function PATCH(request) {
     const body=await request.json(), {competition_type,source_game_id}=body;
     if(!validCompetition(competition_type)||!Number.isInteger(Number(source_game_id)))return NextResponse.json({error:"A valid game identity is required."},{status:400});
     const currentSeason=new Date().getFullYear();
-    const existing=await query("SELECT season FROM public.games WHERE competition_type=$1 AND source_game_id=$2",[competition_type,Number(source_game_id)]);
+    const existing=await query("SELECT season,closing_spread_points,closing_over_under_line FROM public.games WHERE competition_type=$1 AND source_game_id=$2",[competition_type,Number(source_game_id)]);
     if(!existing.rowCount)return NextResponse.json({error:"Game not found."},{status:404});
     if(Number(existing.rows[0].season)<currentSeason)return NextResponse.json({error:`${existing.rows[0].season} season games are locked. Only ${currentSeason} season games can be edited.`},{status:403});
     const awayScore=numericOrNull(body.away_score), homeScore=numericOrNull(body.home_score);
@@ -72,7 +82,8 @@ export async function PATCH(request) {
     const favoritePoints=isPick?0:favoriteSpread;
     const spread=isPick?0:favoritePoints===null?null:favoriteTeam===body.away_team?-favoritePoints:favoriteTeam===body.home_team?favoritePoints:null;
     const displaySpread=isPick?"PK":favoritePoints===null?null:`${favoriteTeam} -${favoritePoints}`;
-    const ats=calculateAts(awayScore,homeScore,spread);
+    const effectiveSpread=existing.rows[0].closing_spread_points==null?spread:Number(existing.rows[0].closing_spread_points);
+    const ats=calculateAts(awayScore,homeScore,effectiveSpread);
     const actualTotal=awayScore===null?null:awayScore+homeScore;
     const result=await query(`UPDATE public.games SET away_score=$3,home_score=$4,spread_points=$5,spread_text=$6,
       favorite_team=$7,favorite_spread=$8,over_under_line=$9,total_points=$10,covered_team=$11,ats_result=$12,updated_at=now()
@@ -80,7 +91,9 @@ export async function PATCH(request) {
       [competition_type,Number(source_game_id),awayScore,homeScore,spread,displaySpread,favoriteTeam,favoritePoints,overUnder,actualTotal,
        ats.covered==="away"?body.away_team:ats.covered==="home"?body.home_team:null,ats.result]);
     if(!result.rowCount)return NextResponse.json({error:"Game not found."},{status:404});
-    return NextResponse.json({success:true,ats_result:ats.result,total_points:actualTotal,over_under_line:overUnder});
+    return NextResponse.json({success:true,ats_result:ats.result,total_points:actualTotal,
+      over_under_line:existing.rows[0].closing_over_under_line??overUnder,
+      closing_line_used:existing.rows[0].closing_spread_points!=null||existing.rows[0].closing_over_under_line!=null});
   }catch(error){console.error("PATCH /api/games:",error);return NextResponse.json({error:"Unable to save this game."},{status:500});}
 }
 
