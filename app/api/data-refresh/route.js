@@ -15,8 +15,11 @@ async function runRefresh(manual=false){
     const lock=await query(`INSERT INTO public.data_source_sync (source,status,row_count,last_synced,last_error,metadata)
       VALUES ('manual_external_refresh','syncing',0,now(),NULL,'{}'::jsonb)
       ON CONFLICT (source) DO UPDATE SET status='syncing',last_synced=now(),last_error=NULL
-      WHERE public.data_source_sync.status <> 'syncing'
-      AND (public.data_source_sync.last_synced IS NULL OR public.data_source_sync.last_synced < now()-interval '20 hours')
+      WHERE
+      (public.data_source_sync.status='syncing' AND public.data_source_sync.last_synced < now()-interval '90 minutes')
+      OR (public.data_source_sync.status='error' AND public.data_source_sync.last_synced < now()-interval '30 minutes')
+      OR (public.data_source_sync.status='ready' AND public.data_source_sync.last_synced < now()-interval '20 hours')
+      OR public.data_source_sync.last_synced IS NULL
       RETURNING source`);
     if(!lock.rowCount) return {limited:true};
   }
