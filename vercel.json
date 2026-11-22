@@ -7,6 +7,10 @@
     {
       "path": "/api/closing-lines",
       "schedule": "45 8 * * *"
+    },
+    {
+      "path": "/api/schedule-sync",
+      "schedule": "30 8 * * *"
     }
   ]
 }
