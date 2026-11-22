@@ -89,7 +89,7 @@ function TeamPicker({value,onChange,teams,placeholder="Choose a team",allowAll=f
 export default function Home() {
   const [tab,setTab]=useState("Game Tracker"), [competition,setCompetition]=useState("regular"), [season,setSeason]=useState("all"), [team,setTeam]=useState("all"), [status,setStatus]=useState("all"), [openNav,setOpenNav]=useState(""), [menuOpen,setMenuOpen]=useState(false), [matchupA,setMatchupA]=useState("Bills"), [matchupB,setMatchupB]=useState("Dolphins"), [trendMetric,setTrendMetric]=useState("ats"), [trendWindow,setTrendWindow]=useState("10"), [streakMetric,setStreakMetric]=useState("wins"), [drilldown,setDrilldown]=useState({team:"all",metric:"all",label:"All completed games"});
   const [games,setGames]=useState([]), [busy,setBusy]=useState(false), [message,setMessage]=useState(""), [toast,setToast]=useState(""), [selected,setSelected]=useState(null), [showEditor,setShowEditor]=useState(false), [gameSearch,setGameSearch]=useState("");
-  const [predictionData,setPredictionData]=useState(null), [predictionBusy,setPredictionBusy]=useState(false), [predictionError,setPredictionError]=useState(""), [predictionRefresh,setPredictionRefresh]=useState(0);
+  const [predictionData,setPredictionData]=useState(null), [predictionBusy,setPredictionBusy]=useState(false), [predictionError,setPredictionError]=useState(""), [predictionRefresh,setPredictionRefresh]=useState(0), [showAllPredictions,setShowAllPredictions]=useState(false);
   const [form,setForm]=useState({away_score:"",home_score:"",favorite_team:"",favorite_spread:"",spread_text:"",over_under_line:""});
   const [showNew,setShowNew]=useState(false);
   const [newGame,setNewGame]=useState({season:new Date().getFullYear(),game_date:"",game_time:"",away_team:"",home_team:"",favorite_team:"",favorite_spread:"",spread_text:"",over_under_line:"",game_type:""});
@@ -384,7 +384,7 @@ export default function Home() {
         <section className="prediction-phase">
           <div className="prediction-phase-head"><span className="prediction-phase-number">02</span><div><span className="eyebrow">PHASE 2 · UPCOMING GAMES</span><h3>Pregame predictions</h3><p>Forecasts are saved before kickoff. Adding or changing a spread or total creates a separate market snapshot instead of overwriting the earlier forecast.</p></div></div>
           {predictionData.upcoming.length===0?<div className="viz-card"><p className="empty">No future games are currently scheduled in the tracker.</p></div>:<div className="prediction-game-grid">
-            {predictionData.upcoming.map(game=>{
+            {predictionData.upcoming.slice(0,showAllPredictions?undefined:16).map(game=>{
               const homePct=Math.round(game.predicted_home_win_probability*100),awayPct=100-homePct;
               const homeScore=(game.predicted_total_points+game.predicted_home_margin)/2,awayScore=game.predicted_total_points-homeScore;
               const favorite=homePct>=50?game.home_team:game.away_team;
@@ -406,6 +406,7 @@ export default function Home() {
               </article>;
             })}
           </div>}
+          {predictionData.upcoming.length>16&&<button type="button" className="prediction-show-more" onClick={()=>setShowAllPredictions(value=>!value)}>{showAllPredictions?"Show fewer games":"Show all "+predictionData.upcoming.length+" upcoming games"}</button>}
           <p className="trend-footnote">No spread or total is assumed when a line is blank. Add the current Vegas lines in Game Tracker, then refresh forecasts to record a line-specific prediction.</p>
         </section>
         <section className="prediction-phase">
