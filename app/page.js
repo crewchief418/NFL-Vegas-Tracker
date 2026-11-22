@@ -98,6 +98,7 @@ export default function Home() {
   const [games,setGames]=useState([]), [busy,setBusy]=useState(false), [message,setMessage]=useState(""), [toast,setToast]=useState(""), [selected,setSelected]=useState(null), [showEditor,setShowEditor]=useState(false), [gameSearch,setGameSearch]=useState("");
   const [predictionData,setPredictionData]=useState(null), [predictionBusy,setPredictionBusy]=useState(false), [predictionError,setPredictionError]=useState(""), [predictionRefresh,setPredictionRefresh]=useState(0);
   const [dataRefreshBusy,setDataRefreshBusy]=useState(false), [dataRefreshMessage,setDataRefreshMessage]=useState("");
+  const [closingLineRefreshBusy,setClosingLineRefreshBusy]=useState(false), [closingLineRefreshMessage,setClosingLineRefreshMessage]=useState("");
   const [form,setForm]=useState({away_score:"",home_score:"",favorite_team:"",favorite_spread:"",spread_text:"",over_under_line:""});
   const [showNew,setShowNew]=useState(false);
   const [newGame,setNewGame]=useState({season:new Date().getFullYear(),game_date:"",game_time:"",away_team:"",home_team:"",favorite_team:"",favorite_spread:"",spread_text:"",over_under_line:"",game_type:""});
@@ -112,6 +113,18 @@ export default function Home() {
       setPredictionRefresh(value=>value+1);
     }catch(error){setDataRefreshMessage(error.message);}
     finally{setDataRefreshBusy(false);}
+  }
+  async function refreshClosingLines(){
+    setClosingLineRefreshBusy(true);setClosingLineRefreshMessage("");
+    try{
+      const response=await fetch("/api/closing-lines",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||"Unable to refresh ESPN closing lines");
+      setClosingLineRefreshMessage(`ESPN batch: ${Number(data.updated||0)} games updated · ${Number(data.remaining||0).toLocaleString()} still waiting for a closing-line lookup.`);
+      await loadGames();
+      setPredictionRefresh(value=>value+1);
+    }catch(error){setClosingLineRefreshMessage(error.message);}
+    finally{setClosingLineRefreshBusy(false);}
   }
 
   async function loadGames() {
@@ -173,9 +186,9 @@ export default function Home() {
     setSelected(g);
     setForm({
       away_score:g.away_score??"",home_score:g.home_score??"",
-      favorite_team:g.favorite_team||(Number(g.spread_points)<0?g.away_team:Number(g.spread_points)>0?g.home_team:""),
-      favorite_spread:g.favorite_spread??(g.spread_points==null?"":Math.abs(Number(g.spread_points))),
-      spread_text:g.spread_text??"",over_under_line:g.over_under_line??""
+      favorite_team:g.manual_favorite_team??"",
+      favorite_spread:g.manual_favorite_spread??(g.manual_spread_points==null?"":Math.abs(Number(g.manual_spread_points))),
+      spread_text:g.spread_text??"",over_under_line:g.manual_over_under_line??""
     });
     setMessage("");
     setShowEditor(true);
@@ -348,7 +361,7 @@ export default function Home() {
   const focusedPerformance=team==="all"?null:performanceInsights.rows.find(r=>r.name===team);
   const confidenceOrder={High:0,Moderate:1,Low:2,Lean:2};
   const visiblePredictions=[...(predictionData?.upcoming||[])].sort((a,b)=>(confidenceOrder[a.confidence]??3)-(confidenceOrder[b.confidence]??3)||String(a.game_date).localeCompare(String(b.game_date))||String(a.game_time||"").localeCompare(String(b.game_time||"")));
-  const dataSourceLabels={nflverse_team_stats:"NFL team stats",nflverse_player_stats:"NFL player stats",nflverse_injuries:"Injury reports",open_meteo_weather:"Stadium weather"};
+  const dataSourceLabels={nflverse_team_stats:"NFL team stats",nflverse_player_stats:"NFL player stats",nflverse_injuries:"Injury reports",open_meteo_weather:"Stadium weather",espn_closing_lines:"ESPN closing lines"};
 
   function analyticsTable() {
     let headers=[], cells= r=>[];
@@ -377,9 +390,9 @@ export default function Home() {
     {tab==="Game Tracker"?<div className="tracker-layout">
       <div className="game-list"><div className="game-search"><input aria-label="Search games" style={inputStyle} placeholder="Search team, date, or game ID…" value={gameSearch} onChange={e=>setGameSearch(e.target.value)}/><span>{visibleGames.length.toLocaleString()} games</span></div>
         {busy&&!games.length?<p className="empty">Loading games…</p>:<>
-          {needsResults.length>0&&<section className="tracker-group"><div className="tracker-group-heading"><span><b>Needs Results</b><small>Most recent past games missing final scores</small></span><strong>{needsResults.length}</strong></div>{needsResults.map(g=><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}><span><b>{g.away_team} @ {g.home_team}</b><small>{formatDate(g.game_date)} · {g.game_time||"Time TBD"} · {g.game_type||"Game"}{g.favorite_team?" · Fav: "+g.favorite_team+" -"+(g.favorite_spread??""):""}{g.over_under_line!=null?" · O/U "+g.over_under_line:""}</small></span><span className="score">0 - 0</span></button>)}</section>}
-          {nextGames.map(g=><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}><span><b>{g.away_team} @ {g.home_team}</b><small>{formatDate(g.game_date)} · {g.game_time||"Time TBD"} · {g.game_type||"Game"}{g.favorite_team?" · Fav: "+g.favorite_team+" -"+(g.favorite_spread??""):""}{g.over_under_line!=null?" · O/U "+g.over_under_line:""}</small></span><span className="score">0 - 0</span></button>)}
-          {completedGames.length>0&&<details className="tracker-completed" open={status==="completed"}><summary>Completed Games <span>{completedGames.length}</span></summary>{completedGames.map(g=><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}><span><b>{g.away_team} @ {g.home_team}</b><small>{formatDate(g.game_date)} · {g.game_time||"Time TBD"} · {g.game_type||"Game"}{g.favorite_team?" · Fav: "+g.favorite_team+" -"+(g.favorite_spread??""):""}{g.over_under_line!=null?" · O/U "+g.over_under_line:""}</small></span><span className="score">{g.away_score} - {g.home_score}</span></button>)}</details>}
+          {needsResults.length>0&&<section className="tracker-group"><div className="tracker-group-heading"><span><b>Needs Results</b><small>Most recent past games missing final scores</small></span><strong>{needsResults.length}</strong></div>{needsResults.map(g=><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}><span><b>{g.away_team} @ {g.home_team}</b><small>{formatDate(g.game_date)} · {g.game_time||"Time TBD"} · {g.game_type||"Game"}{g.favorite_team?" · Fav: "+g.favorite_team+" -"+(g.favorite_spread??""):""}{g.over_under_line!=null?" · O/U "+g.over_under_line:""}</small>{g.closing_line_status&&<small className="closing-line-note">ESPN close: {g.closing_spread_points==null?"spread —":g.closing_spread_points===0?"PK":(g.closing_spread_points>0?g.home_team:g.away_team)+" -"+Math.abs(Number(g.closing_spread_points))} · O/U {g.closing_over_under_line??"—"} · {g.closing_provider||g.closing_line_status}</small>}</span><span className="score">0 - 0</span></button>)}</section>}
+          {nextGames.map(g=><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}><span><b>{g.away_team} @ {g.home_team}</b><small>{formatDate(g.game_date)} · {g.game_time||"Time TBD"} · {g.game_type||"Game"}{g.favorite_team?" · Fav: "+g.favorite_team+" -"+(g.favorite_spread??""):""}{g.over_under_line!=null?" · O/U "+g.over_under_line:""}</small>{g.closing_line_status&&<small className="closing-line-note">ESPN close: {g.closing_spread_points==null?"spread —":g.closing_spread_points===0?"PK":(g.closing_spread_points>0?g.home_team:g.away_team)+" -"+Math.abs(Number(g.closing_spread_points))} · O/U {g.closing_over_under_line??"—"} · {g.closing_provider||g.closing_line_status}</small>}</span><span className="score">0 - 0</span></button>)}
+          {completedGames.length>0&&<details className="tracker-completed" open={status==="completed"}><summary>Completed Games <span>{completedGames.length}</span></summary>{completedGames.map(g=><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}><span><b>{g.away_team} @ {g.home_team}</b><small>{formatDate(g.game_date)} · {g.game_time||"Time TBD"} · {g.game_type||"Game"}{g.favorite_team?" · Fav: "+g.favorite_team+" -"+(g.favorite_spread??""):""}{g.over_under_line!=null?" · O/U "+g.over_under_line:""}</small>{g.closing_line_status&&<small className="closing-line-note">ESPN close: {g.closing_spread_points==null?"spread —":g.closing_spread_points===0?"PK":(g.closing_spread_points>0?g.home_team:g.away_team)+" -"+Math.abs(Number(g.closing_spread_points))} · O/U {g.closing_over_under_line??"—"} · {g.closing_provider||g.closing_line_status}</small>}</span><span className="score">{g.away_score} - {g.home_score}</span></button>)}</details>}
         </>}
         {!visibleGames.length&&!busy&&<p className="empty">No games match this search and filter.</p>}
       </div>
@@ -395,8 +408,10 @@ export default function Home() {
         <div className="prediction-topline"><div><span className="eyebrow">MODEL {predictionData.modelVersion}</span><p>NFL week: {predictionData.currentWeek?.start||"—"} to {predictionData.currentWeek?.end||"—"} · Model trained on {Number(predictionData.trainedGames||0).toLocaleString()} completed games</p></div><button type="button" style={buttonStyle} disabled={predictionBusy} onClick={()=>setPredictionRefresh(value=>value+1)}>{predictionBusy?"Refreshing…":"Refresh forecasts"}</button></div>
         <section className="prediction-phase">
           <div className="prediction-phase-head"><span className="prediction-phase-number">00</span><div><span className="eyebrow">FREE DATA INPUTS</span><h3>Data source health</h3><p>Your historical game records remain the foundation. These additional feeds enrich upcoming forecasts; live context adjustments are experimental and have not yet been validated in a historical out-of-sample backtest.</p></div></div>
-          <div className="prediction-topline"><span className="trend-footnote">Free feeds · Open-Meteo's no-key endpoint is for non-commercial use</span><button type="button" style={buttonStyle} disabled={dataRefreshBusy} onClick={refreshDataFeeds}>{dataRefreshBusy?"Refreshing free data…":"Refresh free data"}</button></div>
+          <div className="prediction-topline"><span className="trend-footnote">Free feeds · ESPN closing lines are saved separately from manually entered lines</span><button type="button" style={buttonStyle} disabled={dataRefreshBusy} onClick={refreshDataFeeds}>{dataRefreshBusy?"Refreshing free data…":"Refresh free data"}</button></div>
           {dataRefreshMessage&&<div className="notice" role="status">{dataRefreshMessage}</div>}
+          <div className="prediction-topline"><span className="trend-footnote">Backfill completed games in batches of 80; rerun after each batch to continue</span><button type="button" style={buttonStyle} disabled={closingLineRefreshBusy} onClick={refreshClosingLines}>{closingLineRefreshBusy?"Loading ESPN lines…":"Refresh ESPN closing lines"}</button></div>
+          {closingLineRefreshMessage&&<div className="notice" role="status">{closingLineRefreshMessage}</div>}
           <div className="performance-cards prediction-stat-cards">
             <div className="performance-card"><span>YOUR GAME HISTORY</span><strong>{Number(predictionData.trainedGames||0).toLocaleString()}</strong><small>Completed games already in Neon</small></div>
             {Object.entries(dataSourceLabels).map(([key,label])=>{const source=(predictionData.dataSources||[]).find(row=>row.source===key);return <div className="performance-card" key={key}><span>{label}</span><strong>{!source||source.status==="never"?"Not synced":source.status==="ready"?"Ready":source.status==="syncing"?"Syncing":"Needs attention"}</strong><small>{Number(source?.row_count||0).toLocaleString()} records{source?.last_synced?" · "+new Date(source.last_synced).toLocaleString():""}{source?.last_error?" · "+source.last_error:""}</small></div>;})}
@@ -490,6 +505,7 @@ export default function Home() {
     {showEditor&&selectedGame&&<div className="modal-backdrop editor-backdrop" onClick={()=>setShowEditor(false)}><section className="editor editor-modal" onClick={e=>e.stopPropagation()}><div className="editor-modal-head"><div><span className="eyebrow">GAME EDITOR · #{selectedGame.source_game_id}</span><h3>{selectedGame.away_team} <i>@</i> {selectedGame.home_team}</h3><p className="muted">{formatDate(selectedGame.game_date)} · {selectedGame.season} {selectedGame.game_type||""}</p></div><button className="close" onClick={()=>setShowEditor(false)}>×</button></div>
       <div className="editor-nav"><button className="secondary" onClick={()=>moveSelected(-1)} disabled={games.findIndex(g=>g.source_game_id===selectedGame.source_game_id)===0}>← Previous game</button><button className="secondary" onClick={()=>moveSelected(1)} disabled={games.findIndex(g=>g.source_game_id===selectedGame.source_game_id)===games.length-1}>Next game →</button></div>
       <div className="score-grid"><label>{selectedGame.away_team} score<input autoFocus style={inputStyle} type="number" min="0" value={form.away_score} onChange={e=>setForm({...form,away_score:e.target.value})}/></label><label>{selectedGame.home_team} score<input style={inputStyle} type="number" min="0" value={form.home_score} onChange={e=>setForm({...form,home_score:e.target.value})}/></label></div>
+      {(selectedGame.closing_spread_points!=null||selectedGame.closing_over_under_line!=null)&&<div className="editor-meta"><span>ESPN closing line · {selectedGame.closing_provider||"Sportsbook"}</span><b>{selectedGame.closing_spread_points==null?"Spread unavailable":selectedGame.closing_spread_points===0?"Pick’em":(selectedGame.closing_spread_points>0?selectedGame.home_team:selectedGame.away_team)+" -"+Math.abs(Number(selectedGame.closing_spread_points))} · O/U {selectedGame.closing_over_under_line??"—"}</b></div>}
       <div className="form-grid"><label>Favorite team<select style={inputStyle} value={form.favorite_team} onChange={e=>setForm({...form,favorite_team:e.target.value})}><option value="">No favorite</option><option value={selectedGame.away_team}>{selectedGame.away_team}</option><option value={selectedGame.home_team}>{selectedGame.home_team}</option><option value="PK">Pick’em (PK)</option></select></label><label>Spread (points)<input style={inputStyle} type="number" min="0" step="0.5" value={form.favorite_spread} disabled={form.favorite_team==="PK"} onChange={e=>setForm({...form,favorite_spread:e.target.value})} placeholder="e.g. 3.5"/></label><label className="full">Over/under betting line<input style={inputStyle} type="number" min="0" step="0.5" value={form.over_under_line} onChange={e=>setForm({...form,over_under_line:e.target.value})} placeholder="e.g. 44.5"/></label></div>
       {form.favorite_team==="PK"&&<p className="muted">Pick’em · spread is automatically zero.</p>}
       <div className="editor-meta"><span>Actual game total (from scores)</span><b>{form.away_score!==""&&form.home_score!==""?Number(form.away_score)+Number(form.home_score):"—"}</b></div>
