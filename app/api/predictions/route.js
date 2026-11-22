@@ -65,20 +65,32 @@ async function loadExternalContext(upcoming) {
     currentInjuryRows:injuryResult.rows.length,weatherGames:weatherResult.rows.length
   }};
 }
+function currentNflWeekWindow(dateText) {
+  // NFL weeks run Tuesday through Monday, keeping Thursday/Sunday/Monday
+  // game windows together (including Thanksgiving week).
+  const date = new Date(`${dateText}T12:00:00Z`);
+  const daysSinceTuesday = (date.getUTCDay() + 5) % 7;
+  date.setUTCDate(date.getUTCDate() - daysSinceTuesday);
+  const start = date.toISOString().slice(0,10);
+  date.setUTCDate(date.getUTCDate() + 6);
+  return { start, end: date.toISOString().slice(0,10) };
+}
 async function buildReport() {
   const games = await loadGames();
   const history = games.filter(game => game.away_score != null && game.home_score != null);
   const now = easternClock();
+  const currentWeek = currentNflWeekWindow(now.date);
   const upcoming = games.filter(game => {
     if (game.away_score != null || game.home_score != null) return false;
     const date = String(game.game_date).slice(0,10);
-    return date > now.date || (date === now.date && Boolean(game.game_time) && String(game.game_time) > now.time);
+    return date >= currentWeek.start && date <= currentWeek.end &&
+      (date > now.date || (date === now.date && Boolean(game.game_time) && String(game.game_time) > now.time));
   });
   const external=await loadExternalContext(upcoming);
   const latestUpdate = history.reduce((latest,game) => Math.max(latest,Date.parse(game.updated_at)||0),0);
   const sourceSignature=external.dataSources.map(row=>`${row.source}:${row.last_synced||"none"}`).join("|");
   const trainingSignature = `${history.length}:${latestUpdate}:${sourceSignature}`;
-  return { ...buildPredictionReport(history, external.upcoming), trainingSignature,
+  return { ...buildPredictionReport(history, external.upcoming), currentWeek, trainingSignature,
     dataSources:external.dataSources,dataCoverage:external.dataCoverage };
 }
 async function getPerformance() {
