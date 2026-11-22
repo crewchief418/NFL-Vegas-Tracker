@@ -58,10 +58,10 @@ function TeamHelmetMark() {
     <path d="M51 96h74" stroke="currentColor" strokeWidth="5" strokeLinecap="round"/>
   </svg>;
 }
-function TeamPicker({value,onChange,teams,placeholder="Choose a team",allowAll=false,compact=false,searchable=true}) {
-  const [open,setOpen]=useState(false),[query,setQuery]=useState("");
+function TeamPicker({value,onChange,teams,placeholder="Choose a team",allowAll=false,compact=false}) {
+  const [open,setOpen]=useState(false);
   const current=teamAssets[value];
-  const available=teams.filter(t=>teamAssets[t]&&t.toLowerCase().includes(query.toLowerCase()));
+  const available=teams.filter(t=>teamAssets[t]);
   const grouped=Object.entries(divisions).map(([division,names])=>[division,names.filter(t=>available.includes(t))]).filter(([,names])=>names.length);
   return <div className={`team-picker ${compact?"team-picker-compact":""}`}>
     <button type="button" className="team-picker-trigger" aria-expanded={open} onClick={()=>setOpen(!open)}>
@@ -69,19 +69,17 @@ function TeamPicker({value,onChange,teams,placeholder="Choose a team",allowAll=f
       <span className="team-picker-current">{value||placeholder}</span><span className="team-picker-chevron">▾</span>
     </button>
     {open&&<div className="team-picker-menu">
-      {searchable&&<input className="team-picker-search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search NFL teams…" autoFocus/>}
-      {allowAll&&<button type="button" className="team-picker-all" onClick={()=>{onChange("all");setOpen(false);setQuery("");}}>All teams</button>}
+      {allowAll&&<button type="button" className="team-picker-all" onClick={()=>{onChange("all");setOpen(false);}}>All teams</button>}
       {grouped.map(([division,names])=><section className="team-picker-division" key={division}>
         <div className="team-picker-division-title">{division}</div>
         <div className="team-picker-grid">{names.map(name=>{
           const info=teamAssets[name];
-          return <button type="button" key={name} className={`team-picker-option ${value===name?"selected":""}`} style={{"--team-accent":info[3]}} onClick={()=>{onChange(name);setOpen(false);setQuery("");}}>
+          return <button type="button" key={name} className={`team-picker-option ${value===name?"selected":""}`} style={{"--team-accent":info[3]}} onClick={()=>{onChange(name);setOpen(false);}}>
             <span className="team-picker-art"><TeamHelmetMark/><img src={teamLogoUrl(name)} alt="" loading="lazy"/></span>
             <span>{name}</span>
           </button>;
         })}</div>
       </section>)}
-      {!available.length&&<div className="team-picker-no-results">No teams found</div>}
     </div>}
   </div>;
 }
