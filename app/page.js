@@ -428,8 +428,13 @@ export default function Home() {
               const homePct=Math.round(game.predicted_home_win_probability*100),awayPct=100-homePct;
               const homeScore=(game.predicted_total_points+game.predicted_home_margin)/2,awayScore=game.predicted_total_points-homeScore;
               const favorite=homePct>=50?game.home_team:game.away_team;
-              const spreadEdge=game.spread_points==null?null:game.predicted_home_margin-game.spread_points;
-              const totalEdge=game.over_under_line==null?null:game.predicted_total_points-game.over_under_line;
+              const spreadEdge=game.spread_points==null?null:Number(game.predicted_home_margin)-Number(game.spread_points);
+              const totalEdge=game.over_under_line==null?null:Number(game.predicted_total_points)-Number(game.over_under_line);
+              const vegasSpread=game.spread_points==null?null:Number(game.spread_points);
+              const vegasTotal=game.over_under_line==null?null:Number(game.over_under_line);
+              const spreadEdgeText=spreadEdge==null||!Number.isFinite(spreadEdge)?"Waiting for line":Math.abs(spreadEdge)<0.05?"No edge":spreadEdge>0?game.home_team+" +"+spreadEdge.toFixed(1)+" pts":game.away_team+" +"+Math.abs(spreadEdge).toFixed(1)+" pts";
+              const totalEdgeText=totalEdge==null||!Number.isFinite(totalEdge)?"Waiting for line":Math.abs(totalEdge)<0.05?"No edge":totalEdge>0?"Over +"+totalEdge.toFixed(1)+" pts":"Under +"+Math.abs(totalEdge).toFixed(1)+" pts";
+              const vegasSpreadText=vegasSpread==null?"Waiting for line":!Number.isFinite(vegasSpread)?"Invalid line":vegasSpread===0?"Pick’em":(vegasSpread>0?game.home_team:game.away_team)+" -"+Math.abs(vegasSpread).toFixed(1);
               return <article className="prediction-game-card" key={game.competition_type+"-"+game.source_game_id}>
                 <div className="prediction-game-meta"><span>{formatDate(game.game_date)} · {formatGameTime(game.game_time)}</span><span className={"prediction-confidence "+game.confidence.toLowerCase()}>{game.confidence} confidence</span></div>
                 <div className="prediction-matchup"><div><small>AWAY</small><b>{game.away_team}</b><strong>{awayScore.toFixed(1)}</strong></div><span className="prediction-at">@</span><div><small>HOME</small><b>{game.home_team}</b><strong>{homeScore.toFixed(1)}</strong></div></div>
@@ -437,10 +442,10 @@ export default function Home() {
                 <div className="prediction-win-track"><i style={{width:awayPct+"%"}}/><i style={{width:homePct+"%"}}/></div>
                 <div className="prediction-favorite">Model lean: <b>{favorite}</b></div>
                 <div className="prediction-market-lines">
-                  <div><span>PROJECTED MARGIN</span><b>{game.predicted_home_margin>0?game.home_team:game.away_team} {Math.abs(game.predicted_home_margin).toFixed(1)}</b></div>
-                  <div><span>SPREAD EDGE</span><b>{spreadEdge==null?"Waiting for line":(spreadEdge>0?"+":"")+spreadEdge.toFixed(1)+" pts"}</b></div>
-                  <div><span>PROJECTED TOTAL</span><b>{game.predicted_total_points.toFixed(1)}</b></div>
-                  <div><span>TOTAL-LINE EDGE</span><b>{totalEdge==null?"Waiting for line":(totalEdge>0?"+":"")+totalEdge.toFixed(1)+" pts"}</b></div>
+                  <div><span>VEGAS SPREAD</span><b>{vegasSpreadText}</b></div>
+                  <div><span>MODEL SPREAD EDGE</span><b>{spreadEdgeText}</b></div>
+                  <div><span>VEGAS TOTAL</span><b>{vegasTotal==null?"Waiting for line":Number.isFinite(vegasTotal)?vegasTotal.toFixed(1):"Invalid line"}</b></div>
+                  <div><span>MODEL TOTAL EDGE</span><b>{totalEdgeText}</b></div>
                 </div>
                 {(game.predicted_home_cover_probability!=null||game.predicted_over_probability!=null)&&<div className="prediction-probability-footer">{game.predicted_home_cover_probability!=null&&<span>Home cover: <b>{Math.round(game.predicted_home_cover_probability*100)}%</b></span>}{game.predicted_over_probability!=null&&<span>Over: <b>{Math.round(game.predicted_over_probability*100)}%</b></span>}</div>}
                 {(game.feature_snapshot?.home_quarterback_report?.status||game.feature_snapshot?.away_quarterback_report?.status||game.feature_snapshot?.weather)&&<div className="prediction-probability-footer">{(game.feature_snapshot.home_quarterback_report?.status||game.feature_snapshot.away_quarterback_report?.status)&&<span>QB reports: <b>{[game.feature_snapshot.away_quarterback_report,game.feature_snapshot.home_quarterback_report].filter(x=>x?.status).map(x=>x.player+" — "+x.status).join(" · ")}</b></span>}{game.feature_snapshot.weather&&<span>{game.feature_snapshot.weather.stadium}: <b>{game.feature_snapshot.weather.wind_max_mph==null?"Indoor / no outdoor forecast":game.feature_snapshot.weather.wind_max_mph+" mph wind"}{game.feature_snapshot.weather.precipitation_in==null?"":" · "+game.feature_snapshot.weather.precipitation_in+" in precip"}</b></span>}<span><a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Weather by Open-Meteo</a></span></div>}
