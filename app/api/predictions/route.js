@@ -21,17 +21,22 @@ async function loadExternalContext(upcoming) {
   const currentSeason = new Date().getUTCFullYear();
   const [teamResult, qbResult, injuryResult, weatherResult, syncResult] = await Promise.all([
     query(`WITH ranked AS (
-      SELECT team,season,week,payload,ROW_NUMBER() OVER(PARTITION BY team ORDER BY season DESC,week DESC) AS rn
+      SELECT team,season,season_type,week,payload,ROW_NUMBER() OVER(PARTITION BY team ORDER BY season DESC,
+      CASE WHEN season_type='POST' THEN 0 ELSE 1 END,week DESC) AS rn
       FROM public.nflverse_team_weekly_stats WHERE season >= $1 - 1
-    ) SELECT team,season,week,payload FROM ranked WHERE rn <= 6 ORDER BY team,season DESC,week DESC`,[currentSeason]),
+    ) SELECT team,season,season_type,week,payload FROM ranked WHERE rn <= 6 ORDER BY team,season DESC,
+      CASE WHEN season_type='POST' THEN 0 ELSE 1 END,week DESC`,[currentSeason]),
     query(`WITH ranked AS (
-      SELECT team,player_id,player_name,position,season,week,payload,
+      SELECT team,player_id,player_name,position,season,season_type,week,payload,
       ROW_NUMBER() OVER(PARTITION BY team,player_id ORDER BY season DESC,week DESC) AS rn
-      FROM public.nflverse_player_weekly_stats WHERE position='QB' AND season >= $1 - 1
-    ) SELECT team,player_id,player_name,position,season,week,payload FROM ranked WHERE rn <= 6 ORDER BY team,player_name,season DESC,week DESC`,[currentSeason]),
+      FROM public.nflverse_player_weekly_stats WHERE position='QB' AND season=$1
+    ) SELECT team,player_id,player_name,position,season,season_type,week,payload FROM ranked WHERE rn <= 6 ORDER BY team,player_name,season DESC,week DESC`,[currentSeason]),
     query(`SELECT team,player_id,player_name,position,report_status,practice_status,injury,week
       FROM public.nflverse_injury_reports
-      WHERE season=$1 AND week=(SELECT MAX(week) FROM public.nflverse_injury_reports WHERE season=$1)
+      WHERE season=$1
+      AND season_type=(SELECT season_type FROM public.nflverse_injury_reports WHERE season=$1 ORDER BY report_date DESC LIMIT 1)
+      AND week=(SELECT MAX(week) FROM public.nflverse_injury_reports WHERE season=$1
+        AND season_type=(SELECT season_type FROM public.nflverse_injury_reports WHERE season=$1 ORDER BY report_date DESC LIMIT 1))
       ORDER BY team,position,player_name`,[currentSeason]),
     query(`SELECT competition_type,source_game_id,game_date,home_team,stadium,
       temperature_max_f,temperature_min_f,wind_max_mph,wind_gust_max_mph,precipitation_in,weather_code,fetched_at
