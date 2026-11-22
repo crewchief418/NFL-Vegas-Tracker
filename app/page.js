@@ -90,9 +90,22 @@ export default function Home() {
   const [tab,setTab]=useState("Game Tracker"), [competition,setCompetition]=useState("regular"), [season,setSeason]=useState("all"), [team,setTeam]=useState("all"), [status,setStatus]=useState("all"), [openNav,setOpenNav]=useState(""), [menuOpen,setMenuOpen]=useState(false), [matchupA,setMatchupA]=useState("Bills"), [matchupB,setMatchupB]=useState("Dolphins"), [trendMetric,setTrendMetric]=useState("ats"), [trendWindow,setTrendWindow]=useState("10"), [streakMetric,setStreakMetric]=useState("wins"), [drilldown,setDrilldown]=useState({team:"all",metric:"all",label:"All completed games"});
   const [games,setGames]=useState([]), [busy,setBusy]=useState(false), [message,setMessage]=useState(""), [toast,setToast]=useState(""), [selected,setSelected]=useState(null), [showEditor,setShowEditor]=useState(false), [gameSearch,setGameSearch]=useState("");
   const [predictionData,setPredictionData]=useState(null), [predictionBusy,setPredictionBusy]=useState(false), [predictionError,setPredictionError]=useState(""), [predictionRefresh,setPredictionRefresh]=useState(0), [showAllPredictions,setShowAllPredictions]=useState(false);
+  const [dataRefreshBusy,setDataRefreshBusy]=useState(false), [dataRefreshMessage,setDataRefreshMessage]=useState("");
   const [form,setForm]=useState({away_score:"",home_score:"",favorite_team:"",favorite_spread:"",spread_text:"",over_under_line:""});
   const [showNew,setShowNew]=useState(false);
   const [newGame,setNewGame]=useState({season:new Date().getFullYear(),game_date:"",game_time:"",away_team:"",home_team:"",favorite_team:"",favorite_spread:"",spread_text:"",over_under_line:"",game_type:""});
+
+  async function refreshDataFeeds(){
+    setDataRefreshBusy(true);setDataRefreshMessage("");
+    try{
+      const response=await fetch("/api/data-refresh",{method:"POST"});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||"Unable to refresh free data");
+      setDataRefreshMessage(`Updated ${Number(data.teamRows||0).toLocaleString()} team rows, ${Number(data.playerRows||0).toLocaleString()} player rows, ${Number(data.injuryRows||0).toLocaleString()} injury reports, and ${Number(data.weatherGames||0).toLocaleString()} weather records.`);
+      setPredictionRefresh(value=>value+1);
+    }catch(error){setDataRefreshMessage(error.message);}
+    finally{setDataRefreshBusy(false);}
+  }
 
   async function loadGames() {
     setBusy(true); setMessage("");
@@ -367,6 +380,8 @@ export default function Home() {
         <div className="prediction-topline"><div><span className="eyebrow">MODEL {predictionData.modelVersion}</span><p>Trained on {Number(predictionData.trainedGames||0).toLocaleString()} completed games · through {predictionData.trainedThrough||"—"}</p></div><button type="button" style={buttonStyle} disabled={predictionBusy} onClick={()=>setPredictionRefresh(value=>value+1)}>{predictionBusy?"Refreshing…":"Refresh forecasts"}</button></div>
         <section className="prediction-phase">
           <div className="prediction-phase-head"><span className="prediction-phase-number">00</span><div><span className="eyebrow">FREE DATA INPUTS</span><h3>Data source health</h3><p>Your historical game records remain the foundation. These additional feeds enrich upcoming forecasts; the historical backtest remains the original walk-forward baseline until historical snapshots are rebuilt.</p></div></div>
+          <div className="prediction-topline"><span className="trend-footnote">Free feeds · no paid sports-data subscription</span><button type="button" style={buttonStyle} disabled={dataRefreshBusy} onClick={refreshDataFeeds}>{dataRefreshBusy?"Refreshing free data…":"Refresh free data"}</button></div>
+          {dataRefreshMessage&&<div className="notice" role="status">{dataRefreshMessage}</div>}
           <div className="performance-cards prediction-stat-cards">
             <div className="performance-card"><span>YOUR GAME HISTORY</span><strong>{Number(predictionData.trainedGames||0).toLocaleString()}</strong><small>Completed games already in Neon</small></div>
             {Object.entries(dataSourceLabels).map(([key,label])=>{const source=(predictionData.dataSources||[]).find(row=>row.source===key);return <div className="performance-card" key={key}><span>{label}</span><strong>{!source||source.status==="never"?"Not synced":source.status==="ready"?"Ready":source.status==="syncing"?"Syncing":"Needs attention"}</strong><small>{Number(source?.row_count||0).toLocaleString()} records{source?.last_synced?" · "+new Date(source.last_synced).toLocaleString():""}{source?.last_error?" · "+source.last_error:""}</small></div>;})}
@@ -413,7 +428,7 @@ export default function Home() {
                   <div><span>TOTAL-LINE EDGE</span><b>{totalEdge==null?"Waiting for line":(totalEdge>0?"+":"")+totalEdge.toFixed(1)+" pts"}</b></div>
                 </div>
                 {(game.predicted_home_cover_probability!=null||game.predicted_over_probability!=null)&&<div className="prediction-probability-footer">{game.predicted_home_cover_probability!=null&&<span>Home cover: <b>{Math.round(game.predicted_home_cover_probability*100)}%</b></span>}{game.predicted_over_probability!=null&&<span>Over: <b>{Math.round(game.predicted_over_probability*100)}%</b></span>}</div>}
-                {(game.feature_snapshot?.home_quarterback_report?.status||game.feature_snapshot?.away_quarterback_report?.status||game.feature_snapshot?.weather)&&<div className="prediction-probability-footer">{(game.feature_snapshot.home_quarterback_report?.status||game.feature_snapshot.away_quarterback_report?.status)&&<span>QB reports: <b>{[game.feature_snapshot.away_quarterback_report,game.feature_snapshot.home_quarterback_report].filter(x=>x?.status).map(x=>x.player+" — "+x.status).join(" · ")}</b></span>}{game.feature_snapshot.weather&&<span>{game.feature_snapshot.weather.stadium}: <b>{game.feature_snapshot.weather.wind_max_mph==null?"Indoor / no outdoor forecast":game.feature_snapshot.weather.wind_max_mph+" mph wind"}{game.feature_snapshot.weather.precipitation_in==null?"":" · "+game.feature_snapshot.weather.precipitation_in+" in precip"}</b></span>}</div>}
+                {(game.feature_snapshot?.home_quarterback_report?.status||game.feature_snapshot?.away_quarterback_report?.status||game.feature_snapshot?.weather)&&<div className="prediction-probability-footer">{(game.feature_snapshot.home_quarterback_report?.status||game.feature_snapshot.away_quarterback_report?.status)&&<span>QB reports: <b>{[game.feature_snapshot.away_quarterback_report,game.feature_snapshot.home_quarterback_report].filter(x=>x?.status).map(x=>x.player+" — "+x.status).join(" · ")}</b></span>}{game.feature_snapshot.weather&&<span>{game.feature_snapshot.weather.stadium}: <b>{game.feature_snapshot.weather.wind_max_mph==null?"Indoor / no outdoor forecast":game.feature_snapshot.weather.wind_max_mph+" mph wind"}{game.feature_snapshot.weather.precipitation_in==null?"":" · "+game.feature_snapshot.weather.precipitation_in+" in precip"}</b></span>}<span><a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Weather by Open-Meteo</a></span></div>}
               </article>;
             })}
           </div>}
