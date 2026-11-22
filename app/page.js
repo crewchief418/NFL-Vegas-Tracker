@@ -114,13 +114,13 @@ export default function Home() {
     }catch(error){setDataRefreshMessage(error.message);}
     finally{setDataRefreshBusy(false);}
   }
-  async function refreshClosingLines(){
+  async function refreshClosingLines(retry=false){
     setClosingLineRefreshBusy(true);setClosingLineRefreshMessage("");
     try{
-      const response=await fetch("/api/closing-lines",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
+      const response=await fetch("/api/closing-lines",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({retry})});
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"Unable to refresh ESPN closing lines");
-      setClosingLineRefreshMessage(`ESPN batch: ${Number(data.updated||0)} games updated · ${Number(data.remaining||0).toLocaleString()} still waiting for a closing-line lookup.`);
+      setClosingLineRefreshMessage(`ESPN batch: ${Number(data.updated||0)} games updated · ${Number(data.totalLines||0).toLocaleString()} total lines saved · ${Number(data.remaining||0).toLocaleString()} still waiting.${retry?` ${Number(data.unmatched||0)} unmatched and ${Number(data.noOdds||0)} without odds in this retry batch.`:""}`);
       await loadGames();
       setPredictionRefresh(value=>value+1);
     }catch(error){setClosingLineRefreshMessage(error.message);}
@@ -410,7 +410,7 @@ export default function Home() {
           <div className="prediction-phase-head"><span className="prediction-phase-number">00</span><div><span className="eyebrow">FREE DATA INPUTS</span><h3>Data source health</h3><p>Your historical game records remain the foundation. These additional feeds enrich upcoming forecasts; live context adjustments are experimental and have not yet been validated in a historical out-of-sample backtest.</p></div></div>
           <div className="prediction-topline"><span className="trend-footnote">Free feeds · ESPN closing lines are saved separately from manually entered lines</span><button type="button" style={buttonStyle} disabled={dataRefreshBusy} onClick={refreshDataFeeds}>{dataRefreshBusy?"Refreshing free data…":"Refresh free data"}</button></div>
           {dataRefreshMessage&&<div className="notice" role="status">{dataRefreshMessage}</div>}
-          <div className="prediction-topline"><span className="trend-footnote">Backfill completed games in batches of 80; rerun after each batch to continue</span><button type="button" style={buttonStyle} disabled={closingLineRefreshBusy} onClick={refreshClosingLines}>{closingLineRefreshBusy?"Loading ESPN lines…":"Refresh ESPN closing lines"}</button></div>
+          <div className="prediction-topline"><span className="trend-footnote">Backfill completed games in batches of 80; rerun after each batch to continue</span><div className="prediction-action-group"><button type="button" style={buttonStyle} disabled={closingLineRefreshBusy} onClick={()=>refreshClosingLines(false)}>{closingLineRefreshBusy?"Loading ESPN lines…":"Refresh ESPN closing lines"}</button><button type="button" className="secondary" disabled={closingLineRefreshBusy} onClick={()=>refreshClosingLines(true)}>Retry unavailable</button></div></div>
           {closingLineRefreshMessage&&<div className="notice" role="status">{closingLineRefreshMessage}</div>}
           <div className="performance-cards prediction-stat-cards">
             <div className="performance-card"><span>YOUR GAME HISTORY</span><strong>{Number(predictionData.trainedGames||0).toLocaleString()}</strong><small>Completed games already in Neon</small></div>
