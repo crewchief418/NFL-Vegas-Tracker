@@ -16,7 +16,8 @@ async function loadGames() {
 async function buildReport() {
   const games = await loadGames();
   const history = games.filter(game => game.away_score != null && game.home_score != null);
-  const upcoming = games.filter(game => game.away_score == null && game.home_score == null);
+  const today = new Date().toISOString().slice(0,10);
+  const upcoming = games.filter(game => game.away_score == null && game.home_score == null && String(game.game_date).slice(0,10) >= today);
   return buildPredictionReport(history, upcoming);
 }
 async function getPerformance() {
@@ -94,7 +95,7 @@ export async function POST() {
     });
     const result = await query(`INSERT INTO public.market_predictions (${columns.join(",")})
       VALUES ${tuples.join(",")}
-      ON CONFLICT (competition_type,source_game_id,model_version) DO NOTHING
+      ON CONFLICT DO NOTHING
       RETURNING id`, values);
     return NextResponse.json({ saved: result.rowCount, alreadyRecorded: upcoming.length - result.rowCount, upcoming: upcoming.length, modelVersion: MODEL_VERSION });
   } catch (error) {
