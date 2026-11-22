@@ -346,7 +346,8 @@ export default function Home() {
     return {rows,marginRows};
   },[teams,completed]);
   const focusedPerformance=team==="all"?null:performanceInsights.rows.find(r=>r.name===team);
-  const visiblePredictions=predictionData?.upcoming||[];
+  const confidenceOrder={High:0,Moderate:1,Low:2,Lean:2};
+  const visiblePredictions=[...(predictionData?.upcoming||[])].sort((a,b)=>(confidenceOrder[a.confidence]??3)-(confidenceOrder[b.confidence]??3)||String(a.game_date).localeCompare(String(b.game_date))||String(a.game_time||"").localeCompare(String(b.game_time||"")));
   const dataSourceLabels={nflverse_team_stats:"NFL team stats",nflverse_player_stats:"NFL player stats",nflverse_injuries:"Injury reports",open_meteo_weather:"Stadium weather"};
 
   function analyticsTable() {
