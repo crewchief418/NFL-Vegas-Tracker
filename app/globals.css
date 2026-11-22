@@ -364,3 +364,192 @@ button:disabled { opacity: .55; cursor: wait !important; }
 
 .prediction-show-more{display:block;width:min(360px,100%);margin:14px auto 0;padding:12px 16px;border:1px solid #52667d;border-radius:9px;background:#1a2a3e;color:#f2c65e;font-size:12px;font-weight:850;cursor:pointer}
 .prediction-show-more:hover{border-color:#e7b84e;background:#20334a}
+
+
+/* Mobile-first usability pass: larger touch targets, calmer spacing, and safer viewport handling. */
+:root { color-scheme: dark; }
+html { -webkit-text-size-adjust: 100%; }
+body { overflow-x: hidden; }
+button, select, input { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid #e7b84e;
+  outline-offset: 2px;
+}
+.table-wrap {
+  max-width: 100%;
+  border: 1px solid #293b50;
+  border-radius: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: #53677f #142235;
+}
+.table-wrap table { margin: 0; }
+.table-wrap th { position: sticky; top: 0; z-index: 1; }
+.table-wrap td:first-child, .table-wrap th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #142235;
+  box-shadow: 5px 0 10px #050b1426;
+}
+.table-wrap th:first-child { z-index: 3; background: #0e1926; }
+.game-row { min-height: 68px; }
+.game-row:focus-visible { outline-offset: -3px; }
+.menu-toggle, .drawer-close, .close { min-width: 44px; min-height: 44px; }
+.drawer-group>button { min-height: 46px; }
+.team-picker-trigger, .team-picker-all { min-height: 46px; }
+.prediction-game-card, .performance-card, .viz-card { min-width: 0; }
+.analytics-intro { min-width: 0; }
+.analytics-intro p { line-height: 1.6; }
+input, select { max-width: 100%; }
+
+@media (max-width: 600px) {
+  .shell {
+    width: 100%;
+    max-width: 100%;
+    padding: 10px 10px calc(30px + env(safe-area-inset-bottom));
+  }
+  .topbar {
+    gap: 10px;
+    padding: 8px 2px 14px;
+  }
+  .topbar-brand { gap: 9px; }
+  .topbar-brand>div { min-width: 0; }
+  .topbar .eyebrow { font-size: 8px; letter-spacing: 1.35px; }
+  .topbar h1 { margin: 5px 0 3px; font-size: clamp(21px, 6vw, 27px); line-height: 1.08; }
+  .topbar p { max-width: 245px; font-size: 10px; line-height: 1.4; }
+  .menu-toggle { width: 44px; height: 44px; flex-basis: 44px; }
+  .metrics { margin: 11px 0 13px; gap: 7px; }
+  .metrics>div { min-width: 0; padding: 10px 11px; border-radius: 10px; }
+  .metrics span { font-size: 8px; letter-spacing: 1px; line-height: 1.35; }
+  .metrics strong { margin-top: 4px; font-size: 22px; }
+  .panel { border-radius: 12px; }
+  .toolbar { gap: 11px; padding: 14px 12px; }
+  .toolbar h2 { font-size: 18px; }
+  .toolbar p { font-size: 11px; line-height: 1.45; }
+  .filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .filters select, .filters input, .filters .team-picker,
+  .filters .team-picker-compact { width: 100%; min-width: 0 !important; }
+  .filters button { grid-column: 1 / -1; width: 100%; min-height: 46px; }
+  .filters select, .filters input { min-height: 46px; padding: 10px 11px; font-size: 16px; }
+  .notice { margin: 10px 10px 0; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+  .game-list { max-height: min(66dvh, 680px); border: 0; }
+  .game-search { position: sticky; top: 0; z-index: 2; gap: 8px; padding: 9px 10px; }
+  .game-search input { min-width: 0; min-height: 44px; font-size: 16px; }
+  .game-search span { font-size: 9px; }
+  .list-head { padding: 10px 12px; font-size: 8px; }
+  .game-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    min-height: 72px;
+    padding: 12px 11px;
+  }
+  .game-row>span:first-child { min-width: 0; }
+  .game-row b { font-size: 13px; line-height: 1.35; }
+  .game-row small { max-width: 100%; font-size: 9px; line-height: 1.45; overflow-wrap: anywhere; }
+  .game-row .score {
+    padding: 7px 8px;
+    border: 1px solid #344960;
+    border-radius: 8px;
+    background: #101b29;
+    color: #f2c65e;
+    font-size: 13px;
+  }
+  .analytics { padding: 14px 11px; }
+  .analytics-intro h3 { font-size: 19px; line-height: 1.2; }
+  .analytics-intro p { font-size: 11px; line-height: 1.55; }
+  .performance-cards { gap: 8px; margin: 15px 0; }
+  .performance-card { gap: 6px; padding: 11px 10px; border-radius: 10px; }
+  .performance-card span { font-size: 8px; letter-spacing: 1px; line-height: 1.35; }
+  .performance-card strong { font-size: clamp(17px, 5vw, 21px); line-height: 1.15; overflow-wrap: anywhere; }
+  .performance-card small { font-size: 9px; line-height: 1.4; }
+  .performance-splits { gap: 10px; margin: 15px 0; }
+  .performance-splits>div { padding: 12px 10px; }
+  .performance-splits h4 { font-size: 12px; line-height: 1.35; }
+  .split-row { font-size: 11px; }
+  .viz-card { margin: 12px 0; padding: 13px 10px; border-radius: 11px; }
+  .viz-heading { align-items: flex-start; margin-bottom: 12px; }
+  .viz-heading h4 { font-size: 15px; line-height: 1.25; }
+  .viz-note { white-space: normal; text-align: right; font-size: 9px; }
+  .table-wrap { margin: 14px 0; max-width: calc(100vw - 42px); }
+  .table-wrap table { min-width: 680px; }
+  .table-wrap th { padding: 10px 9px; font-size: 8px; }
+  .table-wrap td { padding: 10px 9px; font-size: 11px; }
+  .trend-controls { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 14px 0; }
+  .trend-controls label { width: 100%; max-width: none; min-width: 0; }
+  .trend-controls select { width: 100%; min-height: 46px; font-size: 16px; }
+  .trend-hero { align-items: center; gap: 10px; padding: 14px 11px; }
+  .trend-hero h3 { font-size: 19px; line-height: 1.2; }
+  .trend-hero p { font-size: 10px; line-height: 1.5; }
+  .trend-badge { flex-basis: 66px; width: 66px; height: 66px; }
+  .trend-badge strong { font-size: 22px; }
+  .trend-badge span { font-size: 7px; }
+  .rank-row { grid-template-columns: 23px minmax(0, 1fr) auto; gap: 7px; padding: 12px 2px; }
+  .rank-row>strong { max-width: 76px; font-size: 10px; }
+  .rank-team b { font-size: 11px; }
+  .side-drawer { width: min(360px, 90vw); padding-top: max(18px, env(safe-area-inset-top)); }
+  .drawer-head { position: sticky; top: 0; z-index: 2; background: #17263a; }
+  .drawer-group { padding-top: 13px; }
+  .drawer-group>button { min-height: 48px; font-size: 13px; }
+  .team-picker-menu {
+    width: min(360px, calc(100vw - 24px));
+    max-height: min(62dvh, 520px);
+    padding: 9px;
+  }
+  .team-picker-search { min-height: 44px; font-size: 16px; }
+  .team-picker-option { min-height: 88px; }
+  .prediction-dashboard { gap: 12px; }
+  .prediction-phase { padding: 12px 10px; border-radius: 12px; }
+  .prediction-phase-head { gap: 9px; margin-bottom: 12px; }
+  .prediction-phase-head h3 { font-size: 16px; line-height: 1.2; }
+  .prediction-phase-head p { font-size: 10px; line-height: 1.5; }
+  .prediction-phase-number { width: 32px; height: 32px; flex-basis: 32px; border-radius: 9px; }
+  .prediction-stat-cards { gap: 7px; }
+  .prediction-topline { gap: 10px; padding: 11px; }
+  .prediction-topline p { font-size: 10px; line-height: 1.5; overflow-wrap: anywhere; }
+  .prediction-topline button { min-height: 46px; }
+  .prediction-game-card { padding: 12px 10px; }
+  .prediction-matchup { gap: 5px; margin: 13px 0 11px; }
+  .prediction-matchup b { font-size: 12px; }
+  .prediction-matchup strong { font-size: 22px; }
+  .prediction-market-lines { gap: 8px; }
+  .prediction-market-lines b { font-size: 11px; }
+  .prediction-probability-footer { gap: 8px 12px; font-size: 9px; }
+  .modal-backdrop {
+    align-items: end;
+    padding: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .modal, .editor-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: min(92dvh, 820px);
+    padding: 18px 14px calc(18px + env(safe-area-inset-bottom));
+    border-radius: 18px 18px 0 0;
+    border-bottom: 0;
+  }
+  .modal label, .editor label { margin-top: 13px; }
+  .modal input, .modal select, .editor input, .editor select {
+    min-height: 46px;
+    font-size: 16px;
+  }
+  .modal-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .modal-actions button { min-height: 46px; }
+  .editor-nav button { min-height: 44px; }
+  .editor-modal-head h3 { font-size: 18px; line-height: 1.25; }
+  .score-grid { gap: 8px; }
+  .save-toast { bottom: calc(14px + env(safe-area-inset-bottom)); }
+  .pwa-install-wrap { bottom: calc(12px + env(safe-area-inset-bottom)); }
+}
+@media (max-width: 360px) {
+  .shell { padding-left: 8px; padding-right: 8px; }
+  .topbar h1 { font-size: 21px; }
+  .metrics strong { font-size: 19px; }
+  .prediction-stat-cards { grid-template-columns: 1fr 1fr; }
+  .trend-badge { display: none; }
+  .rank-row { grid-template-columns: 20px minmax(0,1fr) auto; gap: 5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
