@@ -576,3 +576,6 @@ input, select { max-width: 100%; }
 
 .prediction-action-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 @media(max-width:600px){.prediction-action-group{width:100%;display:grid;grid-template-columns:1fr}.prediction-action-group button{width:100%}}
+
+/* Current-week prediction status: keep started games visible until final. */
+.prediction-game-status{display:inline-flex;align-items:center;border-radius:999px;padding:4px 8px;font-size:9px;font-weight:900;letter-spacing:1px;border:1px solid #53647a;color:#b9c7d8;background:#1a293b}.prediction-game-status.live{color:#ffcf6a;border-color:#9b7130;background:#392b16}.prediction-game-meta{flex-wrap:wrap}
