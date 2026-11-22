@@ -74,3 +74,8 @@ Closing values are stored separately from manually entered lines in `public.game
 The scheduled job runs daily at 08:45 UTC through `/api/closing-lines`. The endpoint requires the same sensitive `CRON_SECRET` used by the existing data refresh. It only processes completed games in the current NFL season from the start of the current NFL game week (Thursday) onward; it does not backfill older games or prior seasons. The Market Predictions page's **Refresh ESPN closing lines** button follows the same date limit. ESPN requests are rate-limited to a small concurrency.
 
 Games with no matching ESPN event or no usable odds are marked separately rather than having a made-up line. ESPN's odds endpoints are undocumented and may change without notice; this feed is not an official ESPN integration.
+
+
+## NFL schedule updates
+
+A daily ESPN schedule sync runs at 08:30 UTC through `/api/schedule-sync`, immediately before the closing-line refresh. It checks upcoming games in the current season and updates only the scheduled date and kickoff time when ESPN reflects a flex or reschedule. It does not modify scores, spreads, totals, or historical games. The endpoint uses the same protected `CRON_SECRET` as the other scheduled jobs. Kickoff times are stored in Eastern Time to match the app's NFL schedule display.
