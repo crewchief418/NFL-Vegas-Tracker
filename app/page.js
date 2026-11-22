@@ -322,6 +322,7 @@ export default function Home() {
   },[teams,completed]);
   const focusedPerformance=team==="all"?null:performanceInsights.rows.find(r=>r.name===team);
   const visiblePredictions=showAllPredictions?(predictionData?.upcoming||[]):(predictionData?.upcoming||[]).slice(0,16);
+  const dataSourceLabels={nflverse_team_stats:"NFL team stats",nflverse_player_stats:"NFL player stats",nflverse_injuries:"Injury reports",open_meteo_weather:"Stadium weather"};
 
   function analyticsTable() {
     let headers=[], cells= r=>[];
@@ -365,6 +366,14 @@ export default function Home() {
       {predictionData&&<>
         <div className="prediction-topline"><div><span className="eyebrow">MODEL {predictionData.modelVersion}</span><p>Trained on {Number(predictionData.trainedGames||0).toLocaleString()} completed games · through {predictionData.trainedThrough||"—"}</p></div><button type="button" style={buttonStyle} disabled={predictionBusy} onClick={()=>setPredictionRefresh(value=>value+1)}>{predictionBusy?"Refreshing…":"Refresh forecasts"}</button></div>
         <section className="prediction-phase">
+          <div className="prediction-phase-head"><span className="prediction-phase-number">00</span><div><span className="eyebrow">FREE DATA INPUTS</span><h3>Data source health</h3><p>Your historical game records remain the foundation. These additional feeds enrich upcoming forecasts; the historical backtest remains the original walk-forward baseline until historical snapshots are rebuilt.</p></div></div>
+          <div className="performance-cards prediction-stat-cards">
+            <div className="performance-card"><span>YOUR GAME HISTORY</span><strong>{Number(predictionData.trainedGames||0).toLocaleString()}</strong><small>Completed games already in Neon</small></div>
+            {(predictionData.dataSources||[]).map(source=><div className="performance-card" key={source.source}><span>{dataSourceLabels[source.source]||source.source}</span><strong>{source.status==="ready"?"Ready":source.status==="syncing"?"Syncing":source.status==="error"?"Needs attention":"Not synced"}</strong><small>{Number(source.row_count||0).toLocaleString()} records{source.last_synced?" · "+new Date(source.last_synced).toLocaleString():""}{source.last_error?" · "+source.last_error:""}</small></div>)}
+          </div>
+          <p className="trend-footnote">Coverage in the latest forecast build: {Number(predictionData.dataCoverage?.teamStatRows||0).toLocaleString()} team-week records · {Number(predictionData.dataCoverage?.qbStatRows||0).toLocaleString()} QB-week records · {Number(predictionData.dataCoverage?.currentInjuryRows||0).toLocaleString()} current injury reports · {Number(predictionData.dataCoverage?.weatherGames||0).toLocaleString()} stadium weather records.</p>
+        </section>
+        <section className="prediction-phase">
           <div className="prediction-phase-head"><span className="prediction-phase-number">01</span><div><span className="eyebrow">PHASE 1 · HISTORICAL TEST</span><h3>Walk-forward backtest</h3><p>Each game is predicted using only games played before it. Ratings and recent form update after each final score.</p></div></div>
           <div className="performance-cards prediction-stat-cards">
             <div className="performance-card"><span>WINNER ACCURACY</span><strong>{predictionData.backtest.winner.accuracy==null?"—":predictionData.backtest.winner.accuracy+"%"}</strong><small>{predictionData.backtest.winner.correct} correct of {predictionData.backtest.winner.games} non-tie games</small></div>
@@ -404,6 +413,7 @@ export default function Home() {
                   <div><span>TOTAL-LINE EDGE</span><b>{totalEdge==null?"Waiting for line":(totalEdge>0?"+":"")+totalEdge.toFixed(1)+" pts"}</b></div>
                 </div>
                 {(game.predicted_home_cover_probability!=null||game.predicted_over_probability!=null)&&<div className="prediction-probability-footer">{game.predicted_home_cover_probability!=null&&<span>Home cover: <b>{Math.round(game.predicted_home_cover_probability*100)}%</b></span>}{game.predicted_over_probability!=null&&<span>Over: <b>{Math.round(game.predicted_over_probability*100)}%</b></span>}</div>}
+                {(game.feature_snapshot?.home_quarterback_report?.status||game.feature_snapshot?.away_quarterback_report?.status||game.feature_snapshot?.weather)&&<div className="prediction-probability-footer">{(game.feature_snapshot.home_quarterback_report?.status||game.feature_snapshot.away_quarterback_report?.status)&&<span>QB reports: <b>{[game.feature_snapshot.away_quarterback_report,game.feature_snapshot.home_quarterback_report].filter(x=>x?.status).map(x=>x.player+" — "+x.status).join(" · ")}</b></span>}{game.feature_snapshot.weather&&<span>{game.feature_snapshot.weather.stadium}: <b>{game.feature_snapshot.weather.wind_max_mph==null?"Indoor / no outdoor forecast":game.feature_snapshot.weather.wind_max_mph+" mph wind"}{game.feature_snapshot.weather.precipitation_in==null?"":" · "+game.feature_snapshot.weather.precipitation_in+" in precip"}</b></span>}</div>}
               </article>;
             })}
           </div>}
