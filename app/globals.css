@@ -299,3 +299,65 @@ button:disabled { opacity: .55; cursor: wait !important; }
 
 /* Trend Finder ranked badge label stacks cleanly on two lines. */
 .trend-badge .trend-badge-label{width:58px;white-space:normal;line-height:1.45;text-align:center;}
+
+
+/* Market Predictions dashboard */
+.prediction-dashboard{display:grid;gap:20px;min-width:0}
+.prediction-topline{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 18px;border:1px solid #354960;border-radius:13px;background:linear-gradient(125deg,#1a2a3e,#111c2a)}
+.prediction-topline p{margin:5px 0 0;color:#a9b7c8;font-size:12px}
+.prediction-phase{min-width:0;padding:18px;border:1px solid #2b3e54;border-radius:15px;background:linear-gradient(145deg,#142235,#101a28)}
+.prediction-phase-head{display:flex;align-items:flex-start;gap:14px;margin-bottom:18px}
+.prediction-phase-head h3{margin:4px 0 5px;font-size:21px}
+.prediction-phase-head p{margin:0;color:#91a3b8;font-size:12px;line-height:1.55}
+.prediction-phase-number{width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;border:1px solid #d9ad4c88;border-radius:12px;background:#e7b84e13;color:#f1c65c;font-size:15px;font-weight:950}
+.prediction-stat-cards{margin:0;grid-template-columns:repeat(4,minmax(0,1fr))}
+.prediction-subgrid{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;margin-top:14px}
+.prediction-subgrid .viz-card{margin:0;min-width:0}
+.prediction-calibration{display:grid;gap:14px;padding-top:6px}
+.prediction-calibration-row{display:grid;grid-template-columns:70px minmax(40px,1fr) 48px 62px;align-items:center;gap:9px;font-size:11px}
+.prediction-calibration-row>span{color:#d5dfeb;font-weight:800}
+.prediction-calibration-row>b{text-align:right;color:#f1c65c}
+.prediction-calibration-row>small{color:#8597ad;text-align:right}
+.prediction-track{height:8px;overflow:hidden;border-radius:99px;background:#28394d}
+.prediction-track i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#9b742e,#f1c65c)}
+.prediction-method ul{padding-left:18px;margin:0;color:#d2dce8;font-size:12px;line-height:1.9}
+.prediction-game-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.prediction-game-card{min-width:0;padding:15px;border:1px solid #344960;border-radius:13px;background:linear-gradient(145deg,#1a2a3e,#111b29)}
+.prediction-game-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#a9b8c9;font-size:10px}
+.prediction-confidence{padding:4px 8px;border-radius:99px;background:#25364b;color:#d6e0ec;font-size:9px;font-weight:850}
+.prediction-confidence.high{border:1px solid #3b8d6d66;color:#86d5ad}
+.prediction-confidence.moderate{border:1px solid #d0a44766;color:#f2cb6c}
+.prediction-confidence.lean{border:1px solid #6886a766;color:#b2c5dc}
+.prediction-matchup{display:grid;grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr);align-items:center;gap:8px;margin:17px 0 14px;text-align:center}
+.prediction-matchup>div{display:grid;gap:5px;min-width:0}
+.prediction-matchup small{color:#8497ad;font-size:8px;letter-spacing:1.4px;font-weight:900}
+.prediction-matchup b{font-size:clamp(12px,2vw,16px);overflow-wrap:anywhere}
+.prediction-matchup strong{color:#f1c65c;font-size:25px;font-variant-numeric:tabular-nums}
+.prediction-at{color:#72849a;font-size:11px;font-weight:900}
+.prediction-win-label{display:flex;justify-content:space-between;gap:8px;color:#9eafc1;font-size:9px;font-weight:850;letter-spacing:.8px}
+.prediction-win-label b{color:#e7edf5;font-size:11px;letter-spacing:0}
+.prediction-win-track{height:9px;display:flex;overflow:hidden;margin:7px 0 9px;border-radius:99px;background:#29394d}
+.prediction-win-track i:first-child{background:#477d9b}
+.prediction-win-track i:last-child{background:#d2a33e}
+.prediction-favorite{color:#9eafc1;font-size:11px}
+.prediction-favorite b{color:#f2c65e}
+.prediction-market-lines{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:14px;padding-top:12px;border-top:1px solid #34465c}
+.prediction-market-lines>div{display:grid;gap:4px;min-width:0}
+.prediction-market-lines span{color:#8295aa;font-size:8px;letter-spacing:1px;font-weight:850}
+.prediction-market-lines b{color:#e7edf5;font-size:12px;overflow-wrap:anywhere}
+.prediction-probability-footer{display:flex;gap:14px;flex-wrap:wrap;margin-top:11px;color:#a9b8c9;font-size:10px}
+.prediction-probability-footer b{color:#f2c65e}
+.prediction-disclaimer{margin:0;padding:13px 15px;border-left:3px solid #a77f35;background:#172538;color:#9cadbf;font-size:10px;line-height:1.65}
+.prediction-loading{padding:25px;color:#aab9ca}
+@media(max-width:850px){.prediction-stat-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.prediction-subgrid{grid-template-columns:1fr}}
+@media(max-width:600px){
+ .prediction-phase{padding:14px 11px}
+ .prediction-phase-head{gap:10px}
+ .prediction-phase-head h3{font-size:18px}
+ .prediction-phase-number{width:36px;height:36px;flex-basis:36px}
+ .prediction-game-grid{grid-template-columns:1fr}
+ .prediction-topline{align-items:flex-start;padding:13px;flex-direction:column}
+ .prediction-topline button{width:100%}
+ .prediction-calibration-row{grid-template-columns:64px minmax(30px,1fr) 42px 52px;gap:6px;font-size:10px}
+ .prediction-matchup strong{font-size:23px}
+}
