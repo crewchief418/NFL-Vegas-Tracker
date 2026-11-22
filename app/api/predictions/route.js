@@ -87,18 +87,24 @@ async function buildReport() {
   const history = games.filter(game => game.away_score != null && game.home_score != null);
   const now = easternClock();
   const currentWeek = currentNflWeekWindow(now.date);
-  const upcoming = games.filter(game => {
+  const currentWeekGames = games.filter(game => {
     if (game.away_score != null || game.home_score != null) return false;
     const date = String(game.game_date).slice(0,10);
-    return date >= currentWeek.start && date <= currentWeek.forecastEnd &&
-      (date > now.date || (date === now.date && Boolean(game.game_time) && String(game.game_time) > now.time));
+    return date >= currentWeek.start && date <= currentWeek.forecastEnd;
   });
-  const external=await loadExternalContext(upcoming);
+  const external=await loadExternalContext(currentWeekGames);
   const latestUpdate = history.reduce((latest,game) => Math.max(latest,Date.parse(game.updated_at)||0),0);
   const sourceSignature=external.dataSources.map(row=>`${row.source}:${row.last_synced||"none"}`).join("|");
   const trainingSignature = `${history.length}:${latestUpdate}:${sourceSignature}`;
-  return { ...buildPredictionReport(history, external.upcoming), currentWeek, trainingSignature,
-    dataSources:external.dataSources,dataCoverage:external.dataCoverage };
+  const predictions = buildPredictionReport(history, external.upcoming);
+  const statusByGame = new Map(external.upcoming.map(game => {
+    const date = String(game.game_date).slice(0,10);
+    const started = date < now.date || (date === now.date && (!game.game_time || String(game.game_time) <= now.time));
+    return [`${game.competition_type}:${game.source_game_id}`, started ? "LIVE" : "UPCOMING"];
+  }));
+  return { ...predictions,
+    upcoming: predictions.upcoming.map(game => ({...game, game_status:statusByGame.get(`${game.competition_type}:${game.source_game_id}`) || "UPCOMING"})),
+    currentWeek, trainingSignature, dataSources:external.dataSources,dataCoverage:external.dataCoverage };
 }
 async function getPerformance(currentWeek) {
   const result = await query(`WITH latest AS (
@@ -159,8 +165,10 @@ export async function GET() {
 export async function POST() {
   try {
     const report = await buildReport();
-    const upcoming = report.upcoming;
-    if (!upcoming.length) return NextResponse.json({ saved: 0, modelVersion: MODEL_VERSION });
+    // Save new model snapshots only before kickoff. Live cards remain visible
+    // on GET, but never get a fresh post-kickoff forecast snapshot.
+    const upcoming = report.upcoming.filter(game => game.game_status === "UPCOMING");
+    if (!upcoming.length) return NextResponse.json({ saved: 0, upcoming: 0, modelVersion: MODEL_VERSION });
     const forecastDate = easternClock().date;
     const columns = ["competition_type","source_game_id","model_version","forecast_date","training_signature","game_date","game_time","away_team","home_team","spread_points","over_under_line","predicted_home_win_probability","predicted_home_cover_probability","predicted_over_probability","predicted_home_margin","predicted_total_points","confidence","sample_size","feature_snapshot"];
     const values = [];
