@@ -5,7 +5,7 @@ import { buildPredictionReport, MODEL_VERSION } from "../../../lib/predictions";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-async function loadGames() {
+function easternClock() {\n  const parts = new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date());\n  const value = Object.fromEntries(parts.map(part => [part.type,part.value]));\n  return { date: `${value.year}-${value.month}-${value.day}`, time: `${value.hour}:${value.minute}` };\n}\n\nasync function loadGames() {
   const result = await query(`SELECT competition_type,source_game_id,season,
     to_char(game_date,'YYYY-MM-DD') AS game_date,to_char(game_time,'HH24:MI') AS game_time,
     away_team,home_team,spread_points,over_under_line,away_score,home_score,total_points,ats_result
@@ -85,7 +85,7 @@ export async function GET() {
 export async function POST() {
   try {
     const report = await buildReport();
-    const upcoming = report.upcoming.filter(game => game.game_date >= new Date().toISOString().slice(0,10));
+    const upcoming = report.upcoming;
     if (!upcoming.length) return NextResponse.json({ saved: 0, modelVersion: MODEL_VERSION });
     const columns = ["competition_type","source_game_id","model_version","game_date","game_time","away_team","home_team","spread_points","over_under_line","predicted_home_win_probability","predicted_home_cover_probability","predicted_over_probability","predicted_home_margin","predicted_total_points","confidence","sample_size","feature_snapshot"];
     const values = [];
