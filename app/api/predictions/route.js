@@ -5,7 +5,13 @@ import { buildPredictionReport, MODEL_VERSION } from "../../../lib/predictions";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function easternClock() {\n  const parts = new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date());\n  const value = Object.fromEntries(parts.map(part => [part.type,part.value]));\n  return { date: `${value.year}-${value.month}-${value.day}`, time: `${value.hour}:${value.minute}` };\n}\n\nasync function loadGames() {
+function easternClock() {
+  const parts = new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date());
+  const value = Object.fromEntries(parts.map(part => [part.type,part.value]));
+  return { date: `${value.year}-${value.month}-${value.day}`, time: `${value.hour}:${value.minute}` };
+}
+
+async function loadGames() {
   const result = await query(`SELECT competition_type,source_game_id,season,
     to_char(game_date,'YYYY-MM-DD') AS game_date,to_char(game_time,'HH24:MI') AS game_time,
     away_team,home_team,spread_points,over_under_line,away_score,home_score,total_points,ats_result
@@ -16,8 +22,12 @@ function easternClock() {\n  const parts = new Intl.DateTimeFormat("en-US",{time
 async function buildReport() {
   const games = await loadGames();
   const history = games.filter(game => game.away_score != null && game.home_score != null);
-  const today = new Date().toISOString().slice(0,10);
-  const upcoming = games.filter(game => game.away_score == null && game.home_score == null && String(game.game_date).slice(0,10) >= today);
+  const now = easternClock();
+  const upcoming = games.filter(game => {
+    if (game.away_score != null || game.home_score != null) return false;
+    const date = String(game.game_date).slice(0,10);
+    return date > now.date || (date === now.date && (!game.game_time || String(game.game_time) > now.time));
+  });
   return buildPredictionReport(history, upcoming);
 }
 async function getPerformance() {
