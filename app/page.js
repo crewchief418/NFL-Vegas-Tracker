@@ -186,7 +186,7 @@ export default function Home() {
     setSelected(g);
     setForm({
       away_score:g.away_score??"",home_score:g.home_score??"",
-      favorite_team:g.manual_favorite_team??"",
+      favorite_team:g.manual_favorite_team??(Number(g.manual_spread_points)<0?g.away_team:Number(g.manual_spread_points)>0?g.home_team:Number(g.manual_spread_points)===0?"PK":""),
       favorite_spread:g.manual_favorite_spread??(g.manual_spread_points==null?"":Math.abs(Number(g.manual_spread_points))),
       spread_text:g.spread_text??"",over_under_line:g.manual_over_under_line??""
     });
