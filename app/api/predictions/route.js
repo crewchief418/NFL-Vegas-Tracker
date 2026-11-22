@@ -97,11 +97,12 @@ export async function POST() {
     const report = await buildReport();
     const upcoming = report.upcoming;
     if (!upcoming.length) return NextResponse.json({ saved: 0, modelVersion: MODEL_VERSION });
-    const columns = ["competition_type","source_game_id","model_version","game_date","game_time","away_team","home_team","spread_points","over_under_line","predicted_home_win_probability","predicted_home_cover_probability","predicted_over_probability","predicted_home_margin","predicted_total_points","confidence","sample_size","feature_snapshot"];
+    const forecastDate = easternClock().date;
+    const columns = ["competition_type","source_game_id","model_version","forecast_date","game_date","game_time","away_team","home_team","spread_points","over_under_line","predicted_home_win_probability","predicted_home_cover_probability","predicted_over_probability","predicted_home_margin","predicted_total_points","confidence","sample_size","feature_snapshot"];
     const values = [];
     const tuples = upcoming.map((game, index) => {
       const offset = index * columns.length;
-      values.push(game.competition_type,game.source_game_id,MODEL_VERSION,game.game_date,game.game_time,game.away_team,game.home_team,
+      values.push(game.competition_type,game.source_game_id,MODEL_VERSION,forecastDate,game.game_date,game.game_time,game.away_team,game.home_team,
         game.spread_points,game.over_under_line,game.predicted_home_win_probability,game.predicted_home_cover_probability,
         game.predicted_over_probability,game.predicted_home_margin,game.predicted_total_points,game.confidence,game.sample_size,
         JSON.stringify(game.feature_snapshot));
