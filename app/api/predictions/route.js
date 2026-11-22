@@ -14,7 +14,7 @@ function easternClock() {
 async function loadGames() {
   const result = await query(`SELECT competition_type,source_game_id,season,
     to_char(game_date,'YYYY-MM-DD') AS game_date,to_char(game_time,'HH24:MI') AS game_time,
-    away_team,home_team,spread_points,over_under_line,away_score,home_score,total_points,ats_result
+    away_team,home_team,spread_points,over_under_line,away_score,home_score,total_points,ats_result,updated_at
     FROM public.games
     ORDER BY game_date,game_time NULLS LAST,source_game_id`);
   return result.rows;
@@ -28,7 +28,9 @@ async function buildReport() {
     const date = String(game.game_date).slice(0,10);
     return date > now.date || (date === now.date && Boolean(game.game_time) && String(game.game_time) > now.time);
   });
-  return buildPredictionReport(history, upcoming);
+  const latestUpdate = history.reduce((latest,game) => Math.max(latest,Date.parse(game.updated_at)||0),0);
+  const trainingSignature = `${history.length}:${latestUpdate}`;
+  return { ...buildPredictionReport(history, upcoming), trainingSignature };
 }
 async function getPerformance() {
   const result = await query(`WITH latest AS (
@@ -98,11 +100,11 @@ export async function POST() {
     const upcoming = report.upcoming;
     if (!upcoming.length) return NextResponse.json({ saved: 0, modelVersion: MODEL_VERSION });
     const forecastDate = easternClock().date;
-    const columns = ["competition_type","source_game_id","model_version","forecast_date","game_date","game_time","away_team","home_team","spread_points","over_under_line","predicted_home_win_probability","predicted_home_cover_probability","predicted_over_probability","predicted_home_margin","predicted_total_points","confidence","sample_size","feature_snapshot"];
+    const columns = ["competition_type","source_game_id","model_version","forecast_date","training_signature","game_date","game_time","away_team","home_team","spread_points","over_under_line","predicted_home_win_probability","predicted_home_cover_probability","predicted_over_probability","predicted_home_margin","predicted_total_points","confidence","sample_size","feature_snapshot"];
     const values = [];
     const tuples = upcoming.map((game, index) => {
       const offset = index * columns.length;
-      values.push(game.competition_type,game.source_game_id,MODEL_VERSION,forecastDate,game.game_date,game.game_time,game.away_team,game.home_team,
+      values.push(game.competition_type,game.source_game_id,MODEL_VERSION,forecastDate,report.trainingSignature,game.game_date,game.game_time,game.away_team,game.home_team,
         game.spread_points,game.over_under_line,game.predicted_home_win_probability,game.predicted_home_cover_probability,
         game.predicted_over_probability,game.predicted_home_margin,game.predicted_total_points,game.confidence,game.sample_size,
         JSON.stringify(game.feature_snapshot));
