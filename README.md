@@ -46,3 +46,20 @@ The **Market Predictions** page contains three connected stages:
 3. **Forecast performance** — saved forecasts are matched to final scores and graded. Winner ties, ATS pushes, and total pushes are excluded from the relevant accuracy denominators. The latest market snapshot for each game is used in the current performance summary; earlier snapshots remain stored.
 
 Forecast snapshots are append-only and keyed by matchup plus the recorded spread and total. Re-running the page on the same day does not create duplicate snapshots for unchanged lines; a new day or a changed completed-game dataset creates a fresh forecast snapshot using the latest available results. This is a historical-data model, not a live odds feed; injuries, weather, line movement, and lineup changes are not included. Probabilities are estimates, not betting advice.
+
+
+## Free prediction data feeds
+
+The Market Predictions model now has a separate external-data layer. It does not overwrite or modify any rows in `public.games`.
+
+- **Existing game history:** remains the source for scores, spreads, totals, Elo ratings, and the walk-forward baseline.
+- **nflverse team stats:** weekly team box-score/stat rows for the last seven seasons.
+- **nflverse player stats:** weekly player production, including quarterback performance, for the last seven seasons.
+- **nflverse injury reports:** weekly injury and practice participation reports for the last seven seasons. Current quarterback injury adjustments are only applied when the injured player matches the team's leading recent passer in the imported weekly stats.
+- **Open-Meteo:** daily stadium forecasts for upcoming games in its three-day free forecast window. Indoor/retractable-roof venues are marked separately and do not receive outdoor-weather penalties.
+
+The refresh job runs daily at 08:15 UTC using Vercel Cron. It downloads public CSV/CSV.GZ releases from nflverse and calls the Open-Meteo forecast API; no paid API key is required. Set `CRON_SECRET` as a sensitive **Production** environment variable in Vercel so the scheduled endpoint can authenticate. The endpoint is `/api/data-refresh`.
+
+The first external-data refresh runs at the next scheduled time after deployment. Data feed health and record counts are shown in Market Predictions. Upcoming forecasts use the newest imported team, player, injury, and weather context. The historical backtest remains the original game-history-only baseline until historical point-in-time external snapshots can be reconstructed; do not compare the contextual live forecast version to that baseline as though they were identical models.
+
+Open-Meteo data is provided under CC BY 4.0; attribute Open-Meteo when redistributing weather-derived data. nflverse datasets are community-maintained public data; see the [nflverse data schedule](https://nflreadr.nflverse.com/articles/nflverse_data_schedule.html) for refresh timing and source details.
