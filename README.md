@@ -35,3 +35,14 @@ The importer skips headings and metadata rows, keeps source sheet/row references
 NFL Vegas Tracker can be installed as a Progressive Web App (PWA) on supported browsers. Open the production URL and choose **Install App** (or the browser's install option). On iPhone/iPad, open the site in Safari, tap **Share**, then **Add to Home Screen**. The app uses the existing Neon database and does not require an account or login.
 
 The app shell can open from cache when offline, but live game data and edits require an internet connection. API responses are deliberately not cached.
+
+
+## Market predictions
+
+The **Market Predictions** page contains three connected stages:
+
+1. **Historical backtest** — chronological walk-forward testing. Each game's forecast is generated before that game's score is added to the model. The model combines Elo team ratings, home-field advantage, and each team's recent scoring and points allowed. Ratings regress toward league average between seasons.
+2. **Upcoming forecasts** — predictions for future games in the schedule. Winner probabilities and projected scores are available even when Vegas lines have not been entered. Add a spread and/or total in Game Tracker to enable ATS and over/under probabilities and record a separate market snapshot.
+3. **Forecast performance** — saved forecasts are matched to final scores and graded. Winner ties, ATS pushes, and total pushes are excluded from the relevant accuracy denominators. The latest market snapshot for each game is used in the current performance summary; earlier snapshots remain stored.
+
+Forecast snapshots are append-only and keyed by matchup plus the recorded spread and total. Re-running the page does not create duplicate snapshots for unchanged lines. This is a historical-data model, not a live odds feed; injuries, weather, line movement, and lineup changes are not included. Probabilities are estimates, not betting advice.
