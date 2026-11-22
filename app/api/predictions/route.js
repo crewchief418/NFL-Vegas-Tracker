@@ -13,7 +13,13 @@ function easternClock() {
 async function loadGames() {
   const result = await query(`SELECT competition_type,source_game_id,season,
     to_char(game_date,'YYYY-MM-DD') AS game_date,to_char(game_time,'HH24:MI') AS game_time,
-    away_team,home_team,spread_points,over_under_line,away_score,home_score,total_points,ats_result,updated_at
+    away_team,home_team,COALESCE(closing_spread_points,spread_points) AS spread_points,
+    COALESCE(closing_over_under_line,over_under_line) AS over_under_line,
+    away_score,home_score,total_points,
+    CASE WHEN closing_spread_points IS NOT NULL AND away_score IS NOT NULL AND home_score IS NOT NULL
+      THEN CASE WHEN away_score+closing_spread_points-home_score=0 THEN 'push'
+        WHEN away_score+closing_spread_points-home_score>0 THEN 'away' ELSE 'home' END
+      ELSE ats_result END AS ats_result,updated_at
     FROM public.games ORDER BY game_date,game_time NULLS LAST,source_game_id`);
   return result.rows;
 }
