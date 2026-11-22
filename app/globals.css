@@ -553,3 +553,20 @@ input, select { max-width: 100%; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+
+/* Game Tracker work queue: actionable games stay above the completed archive. */
+.tracker-group{border-bottom:1px solid #2b3e54}
+.tracker-group-heading{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 16px;background:linear-gradient(100deg,#1b2b40,#142235);border-bottom:1px solid #344960}
+.tracker-group-heading>span{display:grid;gap:3px}
+.tracker-group-heading b{color:#f2c65e;font-size:12px;letter-spacing:.5px}
+.tracker-group-heading small{color:#8fa2b8;font-size:10px}
+.tracker-group-heading strong{display:grid;place-items:center;min-width:28px;height:28px;padding:0 7px;border:1px solid #50647b;border-radius:99px;color:#e8eef6;font-size:11px}
+.pending-score{font-size:10px;color:#f2c65e;background:#2d291d;border:1px solid #77602e;border-radius:7px;padding:7px 9px}
+.tracker-completed{border-top:1px solid #344960}
+.tracker-completed summary{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 16px;background:#101a27;color:#aab9ca;font-size:12px;font-weight:850;cursor:pointer;list-style:none}
+.tracker-completed summary::-webkit-details-marker{display:none}
+.tracker-completed summary:after{content:"＋";color:#e7b84e;font-size:16px}
+.tracker-completed[open] summary:after{content:"−"}
+.tracker-completed summary span{margin-left:auto;color:#8498af;font-variant-numeric:tabular-nums}
+@media(max-width:600px){.tracker-group-heading{padding:12px 11px}.tracker-completed summary{padding:14px 11px}.pending-score{font-size:9px;padding:7px 6px}}
