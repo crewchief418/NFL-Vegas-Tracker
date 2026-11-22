@@ -73,7 +73,10 @@ function currentNflWeekWindow(dateText) {
   date.setUTCDate(date.getUTCDate() - daysSinceTuesday);
   const start = date.toISOString().slice(0,10);
   date.setUTCDate(date.getUTCDate() + 6);
-  return { start, end: date.toISOString().slice(0,10) };
+  const end = date.toISOString().slice(0,10);
+  // Forecast the current NFL week plus the following week, never the full season.
+  date.setUTCDate(date.getUTCDate() + 7);
+  return { start, end, forecastEnd: date.toISOString().slice(0,10) };
 }
 async function buildReport() {
   const games = await loadGames();
@@ -83,7 +86,7 @@ async function buildReport() {
   const upcoming = games.filter(game => {
     if (game.away_score != null || game.home_score != null) return false;
     const date = String(game.game_date).slice(0,10);
-    return date >= currentWeek.start && date <= currentWeek.end &&
+    return date >= currentWeek.start && date <= currentWeek.forecastEnd &&
       (date > now.date || (date === now.date && Boolean(game.game_time) && String(game.game_time) > now.time));
   });
   const external=await loadExternalContext(upcoming);
@@ -93,7 +96,7 @@ async function buildReport() {
   return { ...buildPredictionReport(history, external.upcoming), currentWeek, trainingSignature,
     dataSources:external.dataSources,dataCoverage:external.dataCoverage };
 }
-async function getPerformance() {
+async function getPerformance(currentWeek) {
   const result = await query(`WITH latest AS (
       SELECT DISTINCT ON (competition_type,source_game_id) *
       FROM public.market_predictions WHERE model_version=$1
@@ -122,7 +125,13 @@ async function getPerformance() {
     ats: { games: atsRows.length,correct: atsHits,accuracy: rate(atsHits,atsRows.length) },
     overUnder: { games: ouRows.length,correct: ouHits,accuracy: rate(ouHits,ouRows.length) },
     confidence,latestGenerated: result.rows[0]?.generated_at || null,
-    recent: result.rows.slice(0,30).map(row=>({
+    // Keep completed prediction history, but don't surface stale future-season
+    // snapshots that were incorrectly saved outside the two-week forecast window.
+    recent: result.rows.filter(row => {
+      const date = String(row.game_date).slice(0,10);
+      return (row.away_score != null && row.home_score != null) ||
+        (date >= currentWeek.start && date <= currentWeek.forecastEnd);
+    }).slice(0,30).map(row=>({
       game_date:String(row.game_date).slice(0,10),away_team:row.away_team,home_team:row.home_team,
       predicted_home_win_probability:Number(row.predicted_home_win_probability),
       predicted_home_cover_probability:row.predicted_home_cover_probability==null?null:Number(row.predicted_home_cover_probability),
@@ -136,7 +145,7 @@ async function getPerformance() {
 export async function GET() {
   try {
     const report = await buildReport();
-    const performance = await getPerformance();
+    const performance = await getPerformance(report.currentWeek);
     return NextResponse.json({ ...report, performance });
   } catch (error) {
     console.error("GET /api/predictions:", error);
