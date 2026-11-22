@@ -7,6 +7,7 @@ const navGroups = [
   {label:"Matchups",items:["Matchup Analyzer"]},
   {label:"Team Stats",items:["Team Performance","Points"]},
   {label:"Betting",items:["Against Spread","Over/Under"]},
+  {label:"Predictions",items:["Market Predictions"]},
   {label:"Trends & Analysis",items:["Trend Finder","Season Trends","Game Drill-Down","Streak Tracker"]},
   {label:"Advanced Analytics",items:["Market Insights","Situational Trends","Performance Insights"]}
 ];
@@ -88,6 +89,7 @@ function TeamPicker({value,onChange,teams,placeholder="Choose a team",allowAll=f
 export default function Home() {
   const [tab,setTab]=useState("Game Tracker"), [competition,setCompetition]=useState("regular"), [season,setSeason]=useState("all"), [team,setTeam]=useState("all"), [status,setStatus]=useState("all"), [openNav,setOpenNav]=useState(""), [menuOpen,setMenuOpen]=useState(false), [matchupA,setMatchupA]=useState("Bills"), [matchupB,setMatchupB]=useState("Dolphins"), [trendMetric,setTrendMetric]=useState("ats"), [trendWindow,setTrendWindow]=useState("10"), [streakMetric,setStreakMetric]=useState("wins"), [drilldown,setDrilldown]=useState({team:"all",metric:"all",label:"All completed games"});
   const [games,setGames]=useState([]), [busy,setBusy]=useState(false), [message,setMessage]=useState(""), [toast,setToast]=useState(""), [selected,setSelected]=useState(null), [showEditor,setShowEditor]=useState(false), [gameSearch,setGameSearch]=useState("");
+  const [predictionData,setPredictionData]=useState(null), [predictionBusy,setPredictionBusy]=useState(false), [predictionError,setPredictionError]=useState(""), [predictionRefresh,setPredictionRefresh]=useState(0);
   const [form,setForm]=useState({away_score:"",home_score:"",favorite_team:"",favorite_spread:"",spread_text:"",over_under_line:""});
   const [showNew,setShowNew]=useState(false);
   const [newGame,setNewGame]=useState({season:new Date().getFullYear(),game_date:"",game_time:"",away_team:"",home_team:"",favorite_team:"",favorite_spread:"",spread_text:"",over_under_line:"",game_type:""});
@@ -111,8 +113,27 @@ export default function Home() {
       setSelected(current=>current && data.games.some(g=>g.source_game_id===current.source_game_id)?current:null);
     } catch(e) { setMessage(e.message); } finally { setBusy(false); }
   }
-  useEffect(()=>{loadGames();},[competition,season,team,status,tab]);
+  useEffect(()=>{if(tab!=="Market Predictions")loadGames();},[competition,season,team,status,tab]);
   useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(""),2600);return ()=>clearTimeout(timer);},[toast]);
+  useEffect(()=>{
+    if(tab!=="Market Predictions")return;
+    let cancelled=false;
+    async function refreshPredictions(){
+      setPredictionBusy(true);setPredictionError("");
+      try{
+        const saved=await fetch("/api/predictions",{method:"POST"});
+        const savedData=await saved.json();
+        if(!saved.ok)throw new Error(savedData.error||"Could not record forecasts");
+        const response=await fetch("/api/predictions",{cache:"no-store"});
+        const data=await response.json();
+        if(!response.ok)throw new Error(data.error||"Could not load predictions");
+        if(!cancelled)setPredictionData(data);
+      }catch(error){if(!cancelled)setPredictionError(error.message);}
+      finally{if(!cancelled)setPredictionBusy(false);}
+    }
+    refreshPredictions();
+    return()=>{cancelled=true;};
+  },[tab,predictionRefresh]);
   const seasons=useMemo(()=>[...new Set(games.map(g=>g.season))].sort((a,b)=>b-a),[games]);
   const teams=useMemo(()=>[...new Set(games.flatMap(g=>[g.away_team,g.home_team]))].sort(),[games]);
   const completed=games.filter(g=>g.away_score!=null&&g.home_score!=null);
@@ -317,8 +338,8 @@ export default function Home() {
     {tab==="Game Tracker"&&<section className="metrics"><div><span>GAMES IN VIEW</span><strong>{games.length.toLocaleString()}</strong></div><div><span>COMPLETED</span><strong>{completed.length.toLocaleString()}</strong></div><div><span>HOME WINS</span><strong>{homeWins.toLocaleString()}</strong></div><div><span>AWAY WINS</span><strong>{awayWins.toLocaleString()}</strong></div></section>}
     {menuOpen&&<><button type="button" className="drawer-scrim" aria-label="Close navigation menu" onClick={()=>setMenuOpen(false)}/><aside className="side-drawer" aria-label="Main navigation"><div className="drawer-head"><div><span className="eyebrow">NFL VEGAS TRACKER</span><h2>Navigation</h2></div><button type="button" className="drawer-close" aria-label="Close navigation menu" onClick={()=>setMenuOpen(false)}>×</button></div>{navGroups.map(group=><section className="drawer-group" key={group.label}><h3>{group.label}</h3>{group.items.map(item=><button type="button" key={item} className={tab===item?"selected":""} onClick={()=>{setTab(item);setMenuOpen(false);}}>{item}{tab===item&&<span>●</span>}</button>)}</section>)}</aside></>}
     <section className="panel"><div className="toolbar"><div><h2>{tab}</h2><p>{competition==="all"?"Regular season + playoffs":competition==="regular"?"Regular season":"Playoffs"} · historical game database</p></div><div className="filters">
-      <select aria-label="Competition" style={inputStyle} value={competition} onChange={e=>{setCompetition(e.target.value);setSeason("all");setTeam("all");}}><option value="all">Regular + Playoffs</option><option value="regular">Regular Season</option><option value="playoffs">Playoffs</option></select>
-      {tab!=="Game Tracker"&&<select aria-label="Season" style={inputStyle} value={season} onChange={e=>setSeason(e.target.value)}><option value="all">All Seasons</option>{seasons.map(s=><option key={s} value={s}>{s}</option>)}</select>}
+      {tab!=="Market Predictions"&&<select aria-label="Competition" style={inputStyle} value={competition} onChange={e=>{setCompetition(e.target.value);setSeason("all");setTeam("all");}}><option value="all">Regular + Playoffs</option><option value="regular">Regular Season</option><option value="playoffs">Playoffs</option></select>}
+      {tab!=="Game Tracker"&&tab!=="Market Predictions"&&<select aria-label="Season" style={inputStyle} value={season} onChange={e=>setSeason(e.target.value)}><option value="all">All Seasons</option>{seasons.map(s=><option key={s} value={s}>{s}</option>)}</select>}
       {["Team Performance","Against Spread","Over/Under","Points","Performance Insights"].includes(tab)&&<TeamPicker value={team} onChange={setTeam} teams={Object.keys(teamAssets)} allowAll placeholder="All Teams" compact/>}
       {tab==="Game Tracker"&&<select aria-label="Game status" style={inputStyle} value={status} onChange={e=>setStatus(e.target.value)}><option value="all">All Games</option><option value="completed">Completed</option><option value="upcoming">Not Played</option></select>}
       {tab==="Game Tracker"&&<button style={buttonStyle} disabled={competition==="all"} title={competition==="all"?"Choose Regular Season or Playoffs to add a game":""} onClick={()=>setShowNew(true)}>+ Add Game</button>}
@@ -336,7 +357,72 @@ export default function Home() {
     </div>:tab==="Team Performance"?<div className="analytics"><div className="analytics-intro"><span className="eyebrow">HISTORICAL TEAM RECORDS</span><h3>{focusedTeam?focusedTeam.name+" performance":"All-team performance"}</h3><p>Completed games only · win percentage counts ties as half a win · division opponents are based on NFL division alignment.</p></div>
       {focusedTeam?<><div className="performance-cards"><div className="performance-card stat-click" role="button" tabIndex={0} onClick={()=>openDrilldown(focusedTeam.name,"all",focusedTeam.name+" overall games")}><span>OVERALL</span><strong>{record(focusedTeam.overall.w,focusedTeam.overall.l,focusedTeam.overall.t)}</strong><small>{focusedTeam.overall.pct} · {focusedTeam.overall.g} games</small></div><div className="performance-card stat-click" role="button" tabIndex={0} onClick={()=>openDrilldown(focusedTeam.name,"all",focusedTeam.name+" home games","home")}><span>HOME</span><strong>{record(focusedTeam.home.w,focusedTeam.home.l,focusedTeam.home.t)}</strong><small>{focusedTeam.home.pct} · {focusedTeam.home.g} games</small></div><div className="performance-card stat-click" role="button" tabIndex={0} onClick={()=>openDrilldown(focusedTeam.name,"all",focusedTeam.name+" away games","away")}><span>AWAY</span><strong>{record(focusedTeam.away.w,focusedTeam.away.l,focusedTeam.away.t)}</strong><small>{focusedTeam.away.pct} · {focusedTeam.away.g} games</small></div><div className="performance-card"><span>POINTS PER GAME</span><strong>{focusedTeam.ppg} – {focusedTeam.papg}</strong><small>Scored · allowed</small></div></div>
       <div className="performance-splits"><div><h4>Opponent breakdown</h4>{[["Division opponents",focusedTeam.division],["Non-division opponents",focusedTeam.nonDivision]].map(([label,r])=><div className="split-row" key={label}><span>{label}</span><b>{record(r.w,r.l,r.t)}</b><strong>{r.pct}</strong><small>{r.g} games</small></div>)}</div><div><h4>Home vs. away winning percentage</h4>{[["Home",focusedTeam.home],["Away",focusedTeam.away]].map(([label,r])=><div className="bar-row" key={label}><div><span>{label}</span><b>{r.pct}</b></div><div className="bar-track"><i style={{width:r.pct==="—"?"0":r.pct}}/></div><small>{record(r.w,r.l,r.t)} · {r.g} games</small></div>)}</div></div></>:<div className="table-wrap"><table className="performance-table"><thead><tr><th>TEAM</th><th>W-L-T</th><th>WIN %</th><th>HOME</th><th>AWAY</th><th>DIVISION</th><th>NON-DIVISION</th><th>PF/G</th><th>PA/G</th></tr></thead><tbody>{teamPerformance.map(r=><tr key={r.name}><td><b>{r.name}</b></td><td>{record(r.overall.w,r.overall.l,r.overall.t)}</td><td><b>{r.overall.pct}</b></td><td>{record(r.home.w,r.home.l,r.home.t)}</td><td>{record(r.away.w,r.away.l,r.away.t)}</td><td>{record(r.division.w,r.division.l,r.division.t)}</td><td>{record(r.nonDivision.w,r.nonDivision.l,r.nonDivision.t)}</td><td>{r.ppg}</td><td>{r.papg}</td></tr>)}</tbody></table></div>}
-    </div>:<div className="analytics"><div className="analytics-intro"><span className="eyebrow">HISTORICAL ANALYTICS</span><h3>{tab} breakdown</h3><p>Completed games only · sample sizes are shown with each result.</p></div>
+    </div>:<div className="analytics"><div className="analytics-intro"><span className="eyebrow">{tab==="Market Predictions"?"PREGAME MODEL":"HISTORICAL ANALYTICS"}</span><h3>{tab==="Market Predictions"?"Model, upcoming slate & forecast record":tab+" breakdown"}</h3><p>{tab==="Market Predictions"?"Walk-forward historical testing, saved pregame forecasts, and ongoing model grading.":"Completed games only · sample sizes are shown with each result."}</p></div>
+    {tab==="Market Predictions" && <div className="prediction-dashboard">
+      {predictionError&&<div className="notice">{predictionError}</div>}
+      {!predictionData&&<div className="viz-card prediction-loading">{predictionBusy?"Building the historical backtest and upcoming forecasts…":"Prediction data is not available yet."}</div>}
+      {predictionData&&<>
+        <div className="prediction-topline"><div><span className="eyebrow">MODEL {predictionData.modelVersion}</span><p>Trained on {Number(predictionData.trainedGames||0).toLocaleString()} completed games · through {predictionData.trainedThrough||"—"}</p></div><button type="button" style={buttonStyle} disabled={predictionBusy} onClick={()=>setPredictionRefresh(value=>value+1)}>{predictionBusy?"Refreshing…":"Refresh forecasts"}</button></div>
+        <section className="prediction-phase">
+          <div className="prediction-phase-head"><span className="prediction-phase-number">01</span><div><span className="eyebrow">PHASE 1 · HISTORICAL TEST</span><h3>Walk-forward backtest</h3><p>Each game is predicted using only games played before it. Ratings and recent form update after each final score.</p></div></div>
+          <div className="performance-cards prediction-stat-cards">
+            <div className="performance-card"><span>WINNER ACCURACY</span><strong>{predictionData.backtest.winner.accuracy==null?"—":predictionData.backtest.winner.accuracy+"%"}</strong><small>{predictionData.backtest.winner.correct} correct of {predictionData.backtest.winner.games} non-tie games</small></div>
+            <div className="performance-card"><span>ATS PICK ACCURACY</span><strong>{predictionData.backtest.ats.accuracy==null?"—":predictionData.backtest.ats.accuracy+"%"}</strong><small>{predictionData.backtest.ats.correct} correct of {predictionData.backtest.ats.games} graded decisions · pushes excluded</small></div>
+            <div className="performance-card"><span>OVER / UNDER ACCURACY</span><strong>{predictionData.backtest.overUnder.accuracy==null?"—":predictionData.backtest.overUnder.accuracy+"%"}</strong><small>{predictionData.backtest.overUnder.correct} correct of {predictionData.backtest.overUnder.games} graded totals · pushes excluded</small></div>
+            <div className="performance-card"><span>PROJECTED MARGIN ERROR</span><strong>{predictionData.backtest.marginMae==null?"—":predictionData.backtest.marginMae+" pts"}</strong><small>Average absolute score-margin error · {predictionData.backtest.games} tested games</small></div>
+          </div>
+          <div className="prediction-subgrid">
+            <div className="viz-card"><div className="viz-heading"><div><span className="eyebrow">MODEL CALIBRATION</span><h4>Accuracy by confidence band</h4></div></div>
+              <div className="prediction-calibration">{predictionData.backtest.calibration.map(row=><div className="prediction-calibration-row" key={row.label}><span>{row.label}</span><div className="prediction-track"><i style={{width:row.accuracy==null?"0":row.accuracy+"%"}}/></div><b>{row.accuracy==null?"—":row.accuracy+"%"}</b><small>{row.games} games</small></div>)}</div>
+            </div>
+            <div className="viz-card prediction-method"><div className="viz-heading"><div><span className="eyebrow">HOW IT WORKS</span><h4>Model inputs</h4></div></div>
+              <ul><li>Team Elo ratings with home-field advantage</li><li>Recent scoring and points allowed from each team's last 10 games</li><li>Season-to-season rating regression</li><li>Vegas spread and total lines when they are entered</li></ul>
+              <p className="trend-footnote">Historical backtest is chronological; a game's final score is never used to predict that same game.</p>
+            </div>
+          </div>
+        </section>
+        <section className="prediction-phase">
+          <div className="prediction-phase-head"><span className="prediction-phase-number">02</span><div><span className="eyebrow">PHASE 2 · UPCOMING GAMES</span><h3>Pregame predictions</h3><p>Forecasts are saved before kickoff. Adding or changing a spread or total creates a separate market snapshot instead of overwriting the earlier forecast.</p></div></div>
+          {predictionData.upcoming.length===0?<div className="viz-card"><p className="empty">No future games are currently scheduled in the tracker.</p></div>:<div className="prediction-game-grid">
+            {predictionData.upcoming.map(game=>{
+              const homePct=Math.round(game.predicted_home_win_probability*100),awayPct=100-homePct;
+              const homeScore=(game.predicted_total_points+game.predicted_home_margin)/2,awayScore=game.predicted_total_points-homeScore;
+              const favorite=homePct>=50?game.home_team:game.away_team;
+              const spreadEdge=game.spread_points==null?null:game.predicted_home_margin-game.spread_points;
+              const totalEdge=game.over_under_line==null?null:game.predicted_total_points-game.over_under_line;
+              return <article className="prediction-game-card" key={game.competition_type+"-"+game.source_game_id}>
+                <div className="prediction-game-meta"><span>{game.game_date}</span><span className={"prediction-confidence "+game.confidence.toLowerCase()}>{game.confidence} confidence</span></div>
+                <div className="prediction-matchup"><div><small>AWAY</small><b>{game.away_team}</b><strong>{awayScore.toFixed(1)}</strong></div><span className="prediction-at">@</span><div><small>HOME</small><b>{game.home_team}</b><strong>{homeScore.toFixed(1)}</strong></div></div>
+                <div className="prediction-win-label"><span>WIN PROBABILITY</span><b>{awayPct}% — {homePct}%</b></div>
+                <div className="prediction-win-track"><i style={{width:awayPct+"%"}}/><i style={{width:homePct+"%"}}/></div>
+                <div className="prediction-favorite">Model lean: <b>{favorite}</b></div>
+                <div className="prediction-market-lines">
+                  <div><span>PROJECTED MARGIN</span><b>{game.predicted_home_margin>0?game.home_team:game.away_team} {Math.abs(game.predicted_home_margin).toFixed(1)}</b></div>
+                  <div><span>SPREAD EDGE</span><b>{spreadEdge==null?"Waiting for line":(spreadEdge>0?"+":"")+spreadEdge.toFixed(1)+" pts"}</b></div>
+                  <div><span>PROJECTED TOTAL</span><b>{game.predicted_total_points.toFixed(1)}</b></div>
+                  <div><span>TOTAL-LINE EDGE</span><b>{totalEdge==null?"Waiting for line":(totalEdge>0?"+":"")+totalEdge.toFixed(1)+" pts"}</b></div>
+                </div>
+                {(game.predicted_home_cover_probability!=null||game.predicted_over_probability!=null)&&<div className="prediction-probability-footer">{game.predicted_home_cover_probability!=null&&<span>Home cover: <b>{Math.round(game.predicted_home_cover_probability*100)}%</b></span>}{game.predicted_over_probability!=null&&<span>Over: <b>{Math.round(game.predicted_over_probability*100)}%</b></span>}</div>}
+              </article>;
+            })}
+          </div>}
+          <p className="trend-footnote">No spread or total is assumed when a line is blank. Add the current Vegas lines in Game Tracker, then refresh forecasts to record a line-specific prediction.</p>
+        </section>
+        <section className="prediction-phase">
+          <div className="prediction-phase-head"><span className="prediction-phase-number">03</span><div><span className="eyebrow">PHASE 3 · TRACK RECORD</span><h3>How the model performs</h3><p>Saved forecasts are matched to final scores automatically. This record uses the latest saved line snapshot for each game.</p></div></div>
+          <div className="performance-cards prediction-stat-cards">
+            <div className="performance-card"><span>SETTLED FORECASTS</span><strong>{predictionData.performance.settled}</strong><small>{predictionData.performance.saved} saved forecasts</small></div>
+            <div className="performance-card"><span>WINNER ACCURACY</span><strong>{predictionData.performance.winner.accuracy==null?"—":predictionData.performance.winner.accuracy+"%"}</strong><small>{predictionData.performance.winner.correct} / {predictionData.performance.winner.games} decisions</small></div>
+            <div className="performance-card"><span>ATS ACCURACY</span><strong>{predictionData.performance.ats.accuracy==null?"—":predictionData.performance.ats.accuracy+"%"}</strong><small>{predictionData.performance.ats.correct} / {predictionData.performance.ats.games} graded · pushes excluded</small></div>
+            <div className="performance-card"><span>O/U ACCURACY</span><strong>{predictionData.performance.overUnder.accuracy==null?"—":predictionData.performance.overUnder.accuracy+"%"}</strong><small>{predictionData.performance.overUnder.correct} / {predictionData.performance.overUnder.games} graded · pushes excluded</small></div>
+          </div>
+          {predictionData.performance.settled===0?<div className="viz-card"><p className="empty">No saved forecasts have final scores yet. Upcoming predictions will be graded here automatically as you enter game results.</p></div>:<div className="viz-card"><div className="viz-heading"><div><span className="eyebrow">CONFIDENCE TRACKING</span><h4>Winner accuracy by confidence</h4></div></div><div className="table-wrap"><table><thead><tr><th>CONFIDENCE</th><th>SETTLED PICKS</th><th>WINNER ACCURACY</th></tr></thead><tbody>{predictionData.performance.confidence.map(row=><tr key={row.level}><td><b>{row.level}</b></td><td>{row.games}</td><td>{row.accuracy==null?"—":row.accuracy+"%"}</td></tr>)}</tbody></table></div></div>}
+          {predictionData.performance.recent.length>0&&<div className="viz-card"><div className="viz-heading"><div><span className="eyebrow">LATEST SAVED FORECASTS</span><h4>Prediction history</h4></div></div><div className="table-wrap"><table><thead><tr><th>DATE</th><th>MATCHUP</th><th>MODEL WIN %</th><th>PROJECTED MARGIN</th><th>PROJECTED TOTAL</th><th>STATUS</th></tr></thead><tbody>{predictionData.performance.recent.map((row,i)=><tr key={row.game_date+row.away_team+row.home_team+i}><td>{row.game_date}</td><td><b>{row.away_team} @ {row.home_team}</b></td><td>{Math.round((row.predicted_home_win_probability)*100)}% home</td><td>{row.predicted_home_margin>0?row.home_team:row.away_team} {Math.abs(row.predicted_home_margin).toFixed(1)}</td><td>{row.predicted_total_points.toFixed(1)}</td><td>{row.settled?row.actual_score:"Pending"}</td></tr>)}</tbody></table></div></div>}
+        </section>
+        <p className="prediction-disclaimer">Research tool only, not betting advice. Probabilities are estimates from the data available in this tracker; missing injuries, weather, lineup changes, and market movement can materially affect outcomes. Small samples are less reliable.</p>
+      </>}
+    </div>}
+
 
 
     {tab==="Market Insights" && <><div className="analytics-intro"><span className="eyebrow">VEGAS LINE ACCURACY</span><h3>How closely did the market call it?</h3><p>Average absolute difference between the Vegas line recorded in your data and the final result. Lower error means a closer line. This is not a betting-profit calculation.</p></div><div className="performance-cards"><div className="performance-card"><span>SPREAD ERROR</span><strong>{marketInsights.spreadError==null?"—":marketInsights.spreadError.toFixed(1)+" pts"}</strong><small>{marketInsights.spreadCount} graded games · average absolute margin error</small></div><div className="performance-card"><span>TOTAL-LINE ERROR</span><strong>{marketInsights.totalError==null?"—":marketInsights.totalError.toFixed(1)+" pts"}</strong><small>{marketInsights.gradedCount} graded totals · average absolute total error</small></div></div><div className="viz-card"><div className="viz-heading"><div><span className="eyebrow">TOTAL-LINE SEGMENTS</span><h4>Over / under outcomes by Vegas total</h4></div><span className="viz-note">Pushes excluded from percentage</span></div><div className="table-wrap"><table><thead><tr><th>VEGAS TOTAL</th><th>GAMES</th><th>OVER</th><th>UNDER</th><th>PUSH</th><th>OVER %</th><th>AVG TOTAL ERROR</th></tr></thead><tbody>{marketInsights.bands.map(r=><tr key={r.label}><td><b>{r.label}</b></td><td>{r.games}</td><td>{r.over}</td><td>{r.under}</td><td>{r.push}</td><td>{r.overPct}</td><td>{r.games?r.avgTotalError.toFixed(1)+" pts":"—"}</td></tr>)}</tbody></table></div><p className="trend-footnote">This adds total-line segmentation; spread-size ATS breakdowns remain in Against Spread and are not repeated here.</p></div></>}
