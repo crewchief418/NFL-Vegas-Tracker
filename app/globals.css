@@ -361,3 +361,6 @@ button:disabled { opacity: .55; cursor: wait !important; }
  .prediction-calibration-row{grid-template-columns:64px minmax(30px,1fr) 42px 52px;gap:6px;font-size:10px}
  .prediction-matchup strong{font-size:23px}
 }
+
+.prediction-show-more{display:block;width:min(360px,100%);margin:14px auto 0;padding:12px 16px;border:1px solid #52667d;border-radius:9px;background:#1a2a3e;color:#f2c65e;font-size:12px;font-weight:850;cursor:pointer}
+.prediction-show-more:hover{border-color:#e7b84e;background:#20334a}
