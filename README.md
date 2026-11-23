@@ -79,3 +79,12 @@ Games with no matching ESPN event or no usable odds are marked separately rather
 ## NFL schedule updates
 
 A daily ESPN schedule sync runs at 08:30 UTC through `/api/schedule-sync`, immediately before the closing-line refresh. It checks upcoming games in the current season and updates only the scheduled date and kickoff time when ESPN reflects a flex or reschedule. It does not modify scores, spreads, totals, or historical games. The endpoint uses the same protected `CRON_SECRET` as the other scheduled jobs. Kickoff times are stored in Eastern Time to match the app's NFL schedule display.
+
+
+## Market prediction generation
+
+- Market Predictions page loads the latest saved prediction report from Neon; opening the page does not rerun the model.
+- Forecasts and the historical walk-forward report are generated daily at 09:00 UTC (2:00 AM Mountain Standard Time / 3:00 AM Mountain Daylight Time), after the scheduled data, NFL schedule, and closing-line refreshes.
+- The **Refresh forecasts** button runs the same generation immediately outside the schedule.
+- Pregame snapshots are saved before kickoff and are not overwritten after a game starts. Started games remain visible until their final scores are entered.
+- Report runs are stored in `public.market_prediction_runs`; individual forecast snapshots remain in `public.market_predictions`.
