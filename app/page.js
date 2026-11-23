@@ -96,7 +96,7 @@ function TeamPicker({value,onChange,teams,placeholder="Choose a team",allowAll=f
 export default function Home() {
   const [tab,setTab]=useState("Game Tracker"), [competition,setCompetition]=useState("regular"), [season,setSeason]=useState("all"), [team,setTeam]=useState("all"), [status,setStatus]=useState("all"), [openNav,setOpenNav]=useState(""), [menuOpen,setMenuOpen]=useState(false), [matchupA,setMatchupA]=useState("Bills"), [matchupB,setMatchupB]=useState("Dolphins"), [trendMetric,setTrendMetric]=useState("ats"), [trendWindow,setTrendWindow]=useState("10"), [streakMetric,setStreakMetric]=useState("wins"), [drilldown,setDrilldown]=useState({team:"all",metric:"all",label:"All completed games"});
   const [games,setGames]=useState([]), [busy,setBusy]=useState(false), [message,setMessage]=useState(""), [toast,setToast]=useState(""), [selected,setSelected]=useState(null), [showEditor,setShowEditor]=useState(false), [gameSearch,setGameSearch]=useState("");
-  const [predictionData,setPredictionData]=useState(null), [predictionBusy,setPredictionBusy]=useState(false), [predictionError,setPredictionError]=useState(""), [predictionRefresh,setPredictionRefresh]=useState(0);
+  const [predictionData,setPredictionData]=useState(null), [predictionBusy,setPredictionBusy]=useState(false), [predictionError,setPredictionError]=useState("");
   const [dataRefreshBusy,setDataRefreshBusy]=useState(false), [dataRefreshMessage,setDataRefreshMessage]=useState("");
   const [closingLineRefreshBusy,setClosingLineRefreshBusy]=useState(false), [closingLineRefreshMessage,setClosingLineRefreshMessage]=useState("");
   const [form,setForm]=useState({away_score:"",home_score:"",favorite_team:"",favorite_spread:"",spread_text:"",over_under_line:""});
@@ -110,7 +110,7 @@ export default function Home() {
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"Unable to refresh free data");
       setDataRefreshMessage(`Updated ${Number(data.teamRows||0).toLocaleString()} team rows, ${Number(data.playerRows||0).toLocaleString()} player rows, ${Number(data.injuryRows||0).toLocaleString()} injury reports, and ${Number(data.weatherGames||0).toLocaleString()} weather records.`);
-      setPredictionRefresh(value=>value+1);
+      await runPredictionGeneration();
     }catch(error){setDataRefreshMessage(error.message);}
     finally{setDataRefreshBusy(false);}
   }
@@ -122,7 +122,7 @@ export default function Home() {
       if(!response.ok)throw new Error(data.error||"Unable to refresh ESPN closing lines");
       setClosingLineRefreshMessage(`ESPN batch: ${Number(data.updated||0)} games updated · ${Number(data.unmatched||0)} unmatched · ${Number(data.noOdds||0)} without odds · ${Number(data.totalLines||0).toLocaleString()} total lines saved · ${Number(data.remaining||0).toLocaleString()} still waiting.`);
       await loadGames();
-      setPredictionRefresh(value=>value+1);
+      await runPredictionGeneration();
     }catch(error){setClosingLineRefreshMessage(error.message);}
     finally{setClosingLineRefreshBusy(false);}
   }
@@ -148,25 +148,35 @@ export default function Home() {
   }
   useEffect(()=>{if(tab!=="Market Predictions")loadGames();},[competition,season,team,status,tab]);
   useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(""),2600);return ()=>clearTimeout(timer);},[toast]);
+  async function runPredictionGeneration(){
+    setPredictionBusy(true);setPredictionError("");
+    try{
+      const saved=await fetch("/api/predictions",{method:"POST"});
+      const savedData=await saved.json();
+      if(!saved.ok)throw new Error(savedData.error||"Could not generate forecasts");
+      const response=await fetch("/api/predictions",{cache:"no-store"});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||"Could not load saved predictions");
+      setPredictionData(data);setPredictionError("");
+    }catch(error){setPredictionError(error.message);}
+    finally{setPredictionBusy(false);}
+  }
   useEffect(()=>{
     if(tab!=="Market Predictions")return;
     let cancelled=false;
-    async function refreshPredictions(){
+    async function loadSavedPredictions(){
       setPredictionBusy(true);setPredictionError("");
       try{
-        const saved=await fetch("/api/predictions",{method:"POST"});
-        const savedData=await saved.json();
-        if(!saved.ok)throw new Error(savedData.error||"Could not record forecasts");
         const response=await fetch("/api/predictions",{cache:"no-store"});
         const data=await response.json();
-        if(!response.ok)throw new Error(data.error||"Could not load predictions");
+        if(!response.ok)throw new Error(data.error||"Could not load saved predictions");
         if(!cancelled)setPredictionData(data);
       }catch(error){if(!cancelled)setPredictionError(error.message);}
       finally{if(!cancelled)setPredictionBusy(false);}
     }
-    refreshPredictions();
+    loadSavedPredictions();
     return()=>{cancelled=true;};
-  },[tab,predictionRefresh]);
+  },[tab]);
   const seasons=useMemo(()=>[...new Set(games.map(g=>g.season))].sort((a,b)=>b-a),[games]);
   const teams=useMemo(()=>[...new Set(games.flatMap(g=>[g.away_team,g.home_team]))].sort(),[games]);
   const completed=games.filter(g=>g.away_score!=null&&g.home_score!=null);
@@ -402,10 +412,11 @@ export default function Home() {
       <div className="performance-splits"><div><h4>Opponent breakdown</h4>{[["Division opponents",focusedTeam.division],["Non-division opponents",focusedTeam.nonDivision]].map(([label,r])=><div className="split-row" key={label}><span>{label}</span><b>{record(r.w,r.l,r.t)}</b><strong>{r.pct}</strong><small>{r.g} games</small></div>)}</div><div><h4>Home vs. away winning percentage</h4>{[["Home",focusedTeam.home],["Away",focusedTeam.away]].map(([label,r])=><div className="bar-row" key={label}><div><span>{label}</span><b>{r.pct}</b></div><div className="bar-track"><i style={{width:r.pct==="—"?"0":r.pct}}/></div><small>{record(r.w,r.l,r.t)} · {r.g} games</small></div>)}</div></div></>:<div className="table-wrap"><table className="performance-table"><thead><tr><th>TEAM</th><th>W-L-T</th><th>WIN %</th><th>HOME</th><th>AWAY</th><th>DIVISION</th><th>NON-DIVISION</th><th>PF/G</th><th>PA/G</th></tr></thead><tbody>{teamPerformance.map(r=><tr key={r.name}><td><b>{r.name}</b></td><td>{record(r.overall.w,r.overall.l,r.overall.t)}</td><td><b>{r.overall.pct}</b></td><td>{record(r.home.w,r.home.l,r.home.t)}</td><td>{record(r.away.w,r.away.l,r.away.t)}</td><td>{record(r.division.w,r.division.l,r.division.t)}</td><td>{record(r.nonDivision.w,r.nonDivision.l,r.nonDivision.t)}</td><td>{r.ppg}</td><td>{r.papg}</td></tr>)}</tbody></table></div>}
     </div>:<div className="analytics"><div className="analytics-intro"><span className="eyebrow">{tab==="Market Predictions"?"PREGAME MODEL":"HISTORICAL ANALYTICS"}</span><h3>{tab==="Market Predictions"?"Current week forecasts & model performance":tab+" breakdown"}</h3><p>{tab==="Market Predictions"?"This week's games only, with historical model testing and ongoing forecast grading.":"Completed games only · sample sizes are shown with each result."}</p></div>
     {tab==="Market Predictions" && <div className="prediction-dashboard">
+      <div className="prediction-topline"><span className="trend-footnote">{predictionData?.generatedAt?"Last generated "+new Date(predictionData.generatedAt).toLocaleString():"No saved prediction run yet"}</span><button type="button" style={buttonStyle} disabled={predictionBusy} onClick={runPredictionGeneration}>{predictionBusy?"Generating…":"Refresh forecasts"}</button></div>
       {predictionError&&<div className="notice">{predictionError}</div>}
-      {!predictionData&&<div className="viz-card prediction-loading">{predictionBusy?"Building the historical backtest and upcoming forecasts…":"Prediction data is not available yet."}</div>}
+      {!predictionData&&<div className="viz-card prediction-loading">{predictionBusy?"Loading saved predictions…":"Use Refresh Forecasts to generate the first prediction run."}</div>}
       {predictionData&&<>
-        <div className="prediction-topline"><div><span className="eyebrow">MODEL {predictionData.modelVersion}</span><p>NFL week: {predictionData.currentWeek?.start||"—"} to {predictionData.currentWeek?.end||"—"} · Model trained on {Number(predictionData.trainedGames||0).toLocaleString()} completed games</p></div><button type="button" style={buttonStyle} disabled={predictionBusy} onClick={()=>setPredictionRefresh(value=>value+1)}>{predictionBusy?"Refreshing…":"Refresh forecasts"}</button></div>
+        <div className="prediction-topline"><div><span className="eyebrow">MODEL {predictionData.modelVersion}</span><p>NFL week: {predictionData.currentWeek?.start||"—"} to {predictionData.currentWeek?.end||"—"} · Model trained on {Number(predictionData.trainedGames||0).toLocaleString()} completed games</p></div></div>
         <section className="prediction-phase">
           <div className="prediction-phase-head"><span className="prediction-phase-number">00</span><div><span className="eyebrow">FREE DATA INPUTS</span><h3>Data source health</h3><p>Your historical game records remain the foundation. These additional feeds enrich upcoming forecasts; live context adjustments are experimental and have not yet been validated in a historical out-of-sample backtest.</p></div></div>
           <div className="prediction-topline"><span className="trend-footnote">Free feeds · ESPN closing lines are saved separately from manually entered lines</span><button type="button" style={buttonStyle} disabled={dataRefreshBusy} onClick={refreshDataFeeds}>{dataRefreshBusy?"Refreshing free data…":"Refresh free data"}</button></div>
