@@ -154,12 +154,26 @@ async function getPerformance(currentWeek) {
 }
 export async function GET() {
   try {
-    const report = await buildReport();
+    const saved = await query(`SELECT report,generated_at FROM public.market_prediction_runs ORDER BY generated_at DESC,id DESC LIMIT 1`);
+    if (!saved.rows.length) return NextResponse.json({ error: "No saved forecast run exists yet. Select Refresh Forecasts to generate the first one." }, { status: 404 });
+    const stored = saved.rows[0];
+    const report = stored.report;
+    const games = await loadGames();
+    const now = easternClock();
+    const active = new Map(games.filter(game => game.away_score == null && game.home_score == null)
+      .map(game => [`${game.competition_type}:${game.source_game_id}`, game]));
+    const upcoming = (report.upcoming || []).flatMap(prediction => {
+      const game = active.get(`${prediction.competition_type}:${prediction.source_game_id}`);
+      if (!game) return [];
+      const date = String(game.game_date).slice(0,10);
+      const started = date < now.date || (date === now.date && (!game.game_time || String(game.game_time) <= now.time));
+      return [{ ...prediction, game_date: date, game_time: game.game_time || null, game_status: started ? "LIVE" : "UPCOMING" }];
+    });
     const performance = await getPerformance(report.currentWeek);
-    return NextResponse.json({ ...report, performance });
+    return NextResponse.json({ ...report, upcoming, generatedAt: stored.generated_at, performance });
   } catch (error) {
     console.error("GET /api/predictions:", error);
-    return NextResponse.json({ error: "Unable to build the prediction report." }, { status: 500 });
+    return NextResponse.json({ error: "Unable to load saved prediction report." }, { status: 500 });
   }
 }
 export async function POST() {
@@ -168,7 +182,6 @@ export async function POST() {
     // Save new model snapshots only before kickoff. Live cards remain visible
     // on GET, but never get a fresh post-kickoff forecast snapshot.
     const upcoming = report.upcoming.filter(game => game.game_status === "UPCOMING");
-    if (!upcoming.length) return NextResponse.json({ saved: 0, upcoming: 0, modelVersion: MODEL_VERSION });
     const forecastDate = easternClock().date;
     const columns = ["competition_type","source_game_id","model_version","forecast_date","training_signature","game_date","game_time","away_team","home_team","spread_points","over_under_line","predicted_home_win_probability","predicted_home_cover_probability","predicted_over_probability","predicted_home_margin","predicted_total_points","confidence","sample_size","feature_snapshot"];
     const values = [];
@@ -181,10 +194,17 @@ export async function POST() {
         JSON.stringify(game.feature_snapshot));
       return `(${columns.map((_,column)=>`$${offset+column+1}`).join(",")})`;
     });
-    const result=await query(`INSERT INTO public.market_predictions (${columns.join(",")})
-      VALUES ${tuples.join(",")} ON CONFLICT DO NOTHING RETURNING id`,values);
+    const result = upcoming.length
+      ? await query(`INSERT INTO public.market_predictions (${columns.join(",")})
+          VALUES ${tuples.join(",")} ON CONFLICT DO NOTHING RETURNING id`, values)
+      : { rowCount: 0 };
+    const run = await query(`INSERT INTO public.market_prediction_runs
+      (forecast_date,training_signature,forecast_count,report)
+      VALUES ($1,$2,$3,$4::jsonb) RETURNING id,generated_at`,
+      [forecastDate,report.trainingSignature,upcoming.length,JSON.stringify(report)]);
     return NextResponse.json({saved:result.rowCount,alreadyRecorded:upcoming.length-result.rowCount,
-      upcoming:upcoming.length,modelVersion:MODEL_VERSION,dataCoverage:report.dataCoverage});
+      upcoming:upcoming.length,modelVersion:MODEL_VERSION,dataCoverage:report.dataCoverage,
+      runId:run.rows[0]?.id,generatedAt:run.rows[0]?.generated_at});
   } catch(error) {
     console.error("POST /api/predictions:",error);
     return NextResponse.json({error:"Unable to save the pregame prediction snapshots."},{status:500});
