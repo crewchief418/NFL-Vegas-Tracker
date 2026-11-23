@@ -132,7 +132,7 @@ async function getPerformance(currentWeek) {
   });
   return {
     saved: result.rows.length,settled: scored.length,
-    winner: { games: winnerRows.length,correct: winnerHits,accuracy: rate(winnerHits,winnerRows.length) },
+    winner: { games: winnerRows.length,correct: winnerHits,incorrect: winnerRows.length-winnerHits,ties: scored.length-winnerRows.length,accuracy: rate(winnerHits,winnerRows.length) },
     ats: { games: atsRows.length,correct: atsHits,accuracy: rate(atsHits,atsRows.length) },
     overUnder: { games: ouRows.length,correct: ouHits,accuracy: rate(ouHits,ouRows.length) },
     confidence,latestGenerated: result.rows[0]?.generated_at || null,
