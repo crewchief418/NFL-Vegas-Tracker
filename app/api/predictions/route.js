@@ -120,12 +120,12 @@ async function getPerformance(currentWeek) {
   const scored = result.rows.filter(row => row.away_score != null && row.home_score != null);
   const winnerRows = scored.filter(row => Number(row.home_score) !== Number(row.away_score));
   const winnerHits = winnerRows.filter(row => (Number(row.predicted_home_win_probability) >= 0.5) === (Number(row.home_score) > Number(row.away_score))).length;
-  const atsRows = scored.filter(row => row.spread_points != null && row.ats_result !== "push");
-  const atsHits = atsRows.filter(row => (Number(row.predicted_home_win_probability) >= 0.5) === (Number(row.home_score) - Number(row.away_score) > Number(row.spread_points))).length;
+  const atsRows = scored.filter(row => row.spread_points != null && row.predicted_home_cover_probability != null && row.ats_result !== "push");
+  const atsHits = atsRows.filter(row => (Number(row.predicted_home_cover_probability) >= 0.5) === (Number(row.home_score) - Number(row.away_score) > Number(row.spread_points))).length;
   const ouRows = scored.filter(row => row.over_under_line != null && row.actual_total != null && Number(row.actual_total) !== Number(row.over_under_line));
   const ouHits = ouRows.filter(row => (Number(row.predicted_over_probability) >= 0.5) === (Number(row.actual_total) > Number(row.over_under_line))).length;
   const rate = (hits, count) => count ? Number((hits / count * 100).toFixed(1)) : null;
-  const confidence = ["Lean","Moderate","High"].map(level => {
+  const confidence = ["Low","Moderate","High"].map(level => {
     const rows = winnerRows.filter(row => row.confidence === level);
     const hits = rows.filter(row => (Number(row.predicted_home_win_probability) >= 0.5) === (Number(row.home_score) > Number(row.away_score))).length;
     return { level, games: rows.length, accuracy: rate(hits, rows.length) };
