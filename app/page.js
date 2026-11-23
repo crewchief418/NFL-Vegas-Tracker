@@ -93,6 +93,15 @@ function TeamPicker({value,onChange,teams,placeholder="Choose a team",allowAll=f
   </div>;
 }
 
+async function readApiJson(response,fallback){
+  const body=await response.text();
+  try{return JSON.parse(body);}
+  catch{
+    if(response.status===504||response.status===503)throw new Error(`${fallback}: the server timed out or is temporarily unavailable. Please try again shortly.`);
+    throw new Error(`${fallback} (HTTP ${response.status}). The server returned an unexpected response.`);
+  }
+}
+
 export default function Home() {
   const [tab,setTab]=useState("Game Tracker"), [competition,setCompetition]=useState("regular"), [season,setSeason]=useState("all"), [team,setTeam]=useState("all"), [status,setStatus]=useState("all"), [openNav,setOpenNav]=useState(""), [menuOpen,setMenuOpen]=useState(false), [matchupA,setMatchupA]=useState("Bills"), [matchupB,setMatchupB]=useState("Dolphins"), [trendMetric,setTrendMetric]=useState("ats"), [trendWindow,setTrendWindow]=useState("10"), [streakMetric,setStreakMetric]=useState("wins"), [drilldown,setDrilldown]=useState({team:"all",metric:"all",label:"All completed games"});
   const [games,setGames]=useState([]), [busy,setBusy]=useState(false), [message,setMessage]=useState(""), [toast,setToast]=useState(""), [selected,setSelected]=useState(null), [showEditor,setShowEditor]=useState(false), [gameSearch,setGameSearch]=useState("");
@@ -107,7 +116,7 @@ export default function Home() {
     setDataRefreshBusy(true);setDataRefreshMessage("");
     try{
       const response=await fetch("/api/data-refresh",{method:"POST"});
-      const data=await response.json();
+      const data=await readApiJson(response,"Unable to refresh free data");
       if(!response.ok)throw new Error(data.error||"Unable to refresh free data");
       setDataRefreshMessage(`Updated ${Number(data.teamRows||0).toLocaleString()} team rows, ${Number(data.playerRows||0).toLocaleString()} player rows, ${Number(data.injuryRows||0).toLocaleString()} injury reports, and ${Number(data.weatherGames||0).toLocaleString()} weather records.`);
       await runPredictionGeneration();
@@ -118,7 +127,7 @@ export default function Home() {
     setClosingLineRefreshBusy(true);setClosingLineRefreshMessage("");
     try{
       const response=await fetch("/api/closing-lines",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({retry})});
-      const data=await response.json();
+      const data=await readApiJson(response,"Unable to refresh ESPN closing lines");
       if(!response.ok)throw new Error(data.error||"Unable to refresh ESPN closing lines");
       setClosingLineRefreshMessage(`ESPN batch: ${Number(data.updated||0)} games updated · ${Number(data.unmatched||0)} unmatched · ${Number(data.noOdds||0)} without odds · ${Number(data.totalLines||0).toLocaleString()} total lines saved · ${Number(data.remaining||0).toLocaleString()} still waiting.`);
       await loadGames();
@@ -152,10 +161,10 @@ export default function Home() {
     setPredictionBusy(true);setPredictionError("");
     try{
       const saved=await fetch("/api/predictions",{method:"POST"});
-      const savedData=await saved.json();
+      const savedData=await readApiJson(saved,"Could not generate forecasts");
       if(!saved.ok)throw new Error(savedData.error||"Could not generate forecasts");
       const response=await fetch("/api/predictions",{cache:"no-store"});
-      const data=await response.json();
+      const data=await readApiJson(response,"Could not load saved predictions");
       if(!response.ok)throw new Error(data.error||"Could not load saved predictions");
       setPredictionData(data);setPredictionError("");
     }catch(error){setPredictionError(error.message);}
@@ -168,7 +177,7 @@ export default function Home() {
       setPredictionBusy(true);setPredictionError("");
       try{
         const response=await fetch("/api/predictions",{cache:"no-store"});
-        const data=await response.json();
+        const data=await readApiJson(response,"Could not load saved predictions");
         if(!response.ok)throw new Error(data.error||"Could not load saved predictions");
         if(!cancelled)setPredictionData(data);
       }catch(error){if(!cancelled)setPredictionError(error.message);}
