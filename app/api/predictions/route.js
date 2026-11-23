@@ -4,6 +4,7 @@ import { buildPredictionReport, MODEL_VERSION } from "../../../lib/predictions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 function easternClock() {
   const parts = new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date());
@@ -162,12 +163,40 @@ export async function GET() {
     const now = easternClock();
     const active = new Map(games.filter(game => game.away_score == null && game.home_score == null)
       .map(game => [`${game.competition_type}:${game.source_game_id}`, game]));
+    const startedSnapshots = await query(`SELECT DISTINCT ON (p.competition_type,p.source_game_id)
+        p.competition_type,p.source_game_id,p.spread_points,p.over_under_line,
+        p.predicted_home_win_probability,p.predicted_home_cover_probability,p.predicted_over_probability,
+        p.predicted_home_margin,p.predicted_total_points,p.confidence,p.sample_size,p.feature_snapshot
+      FROM public.market_predictions p
+      JOIN public.games g ON g.competition_type=p.competition_type AND g.source_game_id=p.source_game_id
+      WHERE g.away_score IS NULL AND g.home_score IS NULL
+        AND g.game_date BETWEEN $1::date AND $2::date
+        AND p.generated_at < ((g.game_date + COALESCE(g.game_time,TIME '23:59')) AT TIME ZONE 'America/New_York')
+      ORDER BY p.competition_type,p.source_game_id,p.generated_at DESC,p.id DESC`,
+      [report.currentWeek.start,report.currentWeek.end]);
+    const frozen = new Map(startedSnapshots.rows.map(row => [`${row.competition_type}:${row.source_game_id}`,row]));
     const upcoming = (report.upcoming || []).flatMap(prediction => {
-      const game = active.get(`${prediction.competition_type}:${prediction.source_game_id}`);
+      const key = `${prediction.competition_type}:${prediction.source_game_id}`;
+      const game = active.get(key);
       if (!game) return [];
       const date = String(game.game_date).slice(0,10);
       const started = date < now.date || (date === now.date && (!game.game_time || String(game.game_time) <= now.time));
-      return [{ ...prediction, game_date: date, game_time: game.game_time || null, game_status: started ? "LIVE" : "UPCOMING" }];
+      if (started) {
+        const snapshot = frozen.get(key);
+        if (!snapshot) return [];
+        return [{ ...prediction,
+          game_date: date, game_time: game.game_time || null, game_status: "LIVE",
+          spread_points: snapshot.spread_points == null ? null : Number(snapshot.spread_points),
+          over_under_line: snapshot.over_under_line == null ? null : Number(snapshot.over_under_line),
+          predicted_home_win_probability: Number(snapshot.predicted_home_win_probability),
+          predicted_home_cover_probability: snapshot.predicted_home_cover_probability == null ? null : Number(snapshot.predicted_home_cover_probability),
+          predicted_over_probability: snapshot.predicted_over_probability == null ? null : Number(snapshot.predicted_over_probability),
+          predicted_home_margin: Number(snapshot.predicted_home_margin),
+          predicted_total_points: Number(snapshot.predicted_total_points),
+          confidence: snapshot.confidence, sample_size: snapshot.sample_size, feature_snapshot: snapshot.feature_snapshot
+        }];
+      }
+      return [{ ...prediction, game_date: date, game_time: game.game_time || null, game_status: "UPCOMING" }];
     });
     const performance = await getPerformance(report.currentWeek);
     return NextResponse.json({ ...report, upcoming, generatedAt: stored.generated_at, performance });
