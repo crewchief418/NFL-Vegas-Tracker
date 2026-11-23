@@ -508,6 +508,8 @@ input, select { max-width: 100%; }
   .prediction-phase-number { width: 32px; height: 32px; flex-basis: 32px; border-radius: 9px; }
   .prediction-stat-cards { gap: 7px; }
   .prediction-topline { gap: 10px; padding: 11px; }
+  .prediction-topline button { width: 100%; align-self: stretch; box-sizing: border-box; }
+  .prediction-data-refresh-row + .prediction-topline { margin-top: 12px; }
   .prediction-topline p { font-size: 10px; line-height: 1.5; overflow-wrap: anywhere; }
   .prediction-topline button { min-height: 46px; }
   .prediction-game-card { padding: 12px 10px; }
