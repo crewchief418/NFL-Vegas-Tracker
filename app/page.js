@@ -175,6 +175,7 @@ export default function Home() {
   useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(""),2600);return ()=>clearTimeout(timer);},[toast]);
   useEffect(()=>{if(!dataRefreshMessage)return;const timer=setTimeout(()=>setDataRefreshMessage(""),7000);return ()=>clearTimeout(timer);},[dataRefreshMessage]);
   useEffect(()=>{if(!closingLineRefreshMessage)return;const timer=setTimeout(()=>setClosingLineRefreshMessage(""),7000);return ()=>clearTimeout(timer);},[closingLineRefreshMessage]);
+  useEffect(()=>{if(!currentLinesMessage)return;const timer=setTimeout(()=>setCurrentLinesMessage(""),7000);return ()=>clearTimeout(timer);},[currentLinesMessage]);
   async function runPredictionGeneration(){
     setPredictionBusy(true);setPredictionError("");
     try{
