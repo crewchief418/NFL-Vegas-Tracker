@@ -56,7 +56,7 @@ export default function PlainEnglishGuide() {
       .guide-shell{min-height:100vh;background:#0b1420;color:#edf3fa;padding:28px 18px 80px;font-family:inherit}
       .guide-wrap{max-width:1040px;margin:0 auto}
       .guide-top{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:26px}
-      .guide-back{color:#f1c45f;text-decoration:none;font-weight:800}
+      .guide-back{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 15px;border:0;border-radius:8px;background:#e7b84e;color:#151b24;text-decoration:none;font-size:13px;font-weight:800;cursor:pointer}.guide-back:hover{background:#f0c65e}
       .guide-hero{padding:28px;border:1px solid #30445b;border-radius:18px;background:linear-gradient(135deg,#17283b,#101b2a);margin-bottom:22px}
       .eyebrow{color:#e8bd5a;font-size:12px;font-weight:900;letter-spacing:.12em}
       h1{font-size:clamp(30px,5vw,46px);line-height:1.08;margin:10px 0}
