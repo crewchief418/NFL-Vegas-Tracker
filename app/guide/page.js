@@ -78,8 +78,8 @@ export default function PlainEnglishGuide() {
       @media(max-width:700px){.guide-grid,.glossary{grid-template-columns:1fr}.guide-shell{padding:18px 12px 60px}.guide-hero{padding:21px}.guide-top{align-items:flex-start}.guide-card{padding:17px}}
     `}</style>
     <div className="guide-wrap">
-      <div className="guide-top"><Link className="guide-back" href="/">← Back to NFL Vegas Tracker</Link><span className="eyebrow">PLAIN-ENGLISH GUIDE</span></div>
-      <header className="guide-hero"><span className="eyebrow">NO FOOTBALL MATH DEGREE REQUIRED</span><h1>What Does This Mean?</h1><p>Think of this app as a big football notebook. It remembers games, compares teams, studies betting lines, and makes guesses about future games. This guide explains what each page is trying to tell you—in everyday language.</p></header>
+      <div className="guide-top"><Link className="guide-back" href="/" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,padding:"10px 15px",border:0,borderRadius:8,background:"#e7b84e",color:"#151b24",textDecoration:"none",fontSize:14,fontWeight:800,lineHeight:1.2,cursor:"pointer"}}>← Return to Vegas Tracker</Link></div>
+      <header className="guide-hero"><span className="eyebrow">NO FOOTBALL MATH DEGREE REQUIRED</span><h1>Plain-English Guide</h1><p>Think of this app as a big football notebook. It remembers games, compares teams, studies betting lines, and makes guesses about future games. This guide explains what each page is trying to tell you—in everyday language.</p></header>
       <div className="guide-grid">{sections.map(section=><section className="guide-card" key={section.title}>
         <h2>{section.icon} {section.title}</h2><p>{section.purpose}</p>
         {section.pages&&<ul>{section.pages.map(([name,description])=><li key={name}><b>{name}:</b> {description}</li>)}</ul>}
