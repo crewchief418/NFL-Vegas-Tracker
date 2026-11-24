@@ -20,7 +20,8 @@ export async function GET(request){
     if(!savedResult.rows.length) return NextResponse.json({error:"Generate a forecast first so simulations use the current model predictions."},{status:409});
     const games=gamesResult.rows;
     const history=games.filter(g=>g.away_score!=null&&g.home_score!=null);
-    const calibration=buildPredictionReport(history,[]).simulationCalibration||[];
+    const historicalReport=buildPredictionReport(history,[],{includeSimulationValidation:true});
+    const calibration=historicalReport.simulationCalibration||[];
     const report=savedResult.rows[0].report;
     const active=new Map(games.filter(g=>g.away_score==null&&g.home_score==null).map(g=>[`${g.competition_type}:${g.source_game_id}`,g]));
     const forecasts=(report.upcoming||[]).filter(p=>active.has(`${p.competition_type}:${p.source_game_id}`));
@@ -38,6 +39,6 @@ export async function GET(request){
       return {...forecast,...simulateGame(baseline,calibration,DEFAULT_SIMULATIONS),away_team:game.away_team,home_team:game.home_team,game_date:String(game.game_date).slice(0,10),game_time:game.game_time,spread_points:game.spread_points,over_under_line:game.over_under_line,
         simulationBaseline:"historical-core-model",excludedExperimentalContext:true};
     });
-    return NextResponse.json({generatedAt:savedResult.rows[0].generated_at,modelVersion:report.modelVersion,calibrationGames:calibration.length,minimumCalibrationGames:100,simulations});
+    return NextResponse.json({generatedAt:savedResult.rows[0].generated_at,modelVersion:report.modelVersion,calibrationGames:calibration.length,minimumCalibrationGames:100,validation:historicalReport.simulationValidation,simulations});
   }catch(error){console.error("GET /api/simulations:",error);return NextResponse.json({error:"Unable to build simulations from the historical model data."},{status:500});}
 }
