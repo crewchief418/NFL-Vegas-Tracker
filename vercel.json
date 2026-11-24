@@ -15,6 +15,10 @@
     {
       "path": "/api/predictions/generate",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/current-lines",
+      "schedule": "40 8 * * *"
     }
   ]
 }
