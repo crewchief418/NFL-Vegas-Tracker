@@ -109,6 +109,7 @@ export default function Home() {
   const [selectedPredictionIndex,setSelectedPredictionIndex]=useState(0);
   const [dataRefreshBusy,setDataRefreshBusy]=useState(false), [dataRefreshMessage,setDataRefreshMessage]=useState("");
   const [closingLineRefreshBusy,setClosingLineRefreshBusy]=useState(false), [closingLineRefreshMessage,setClosingLineRefreshMessage]=useState("");
+  const [currentLines,setCurrentLines]=useState([]), [currentLinesBusy,setCurrentLinesBusy]=useState(false), [currentLinesMessage,setCurrentLinesMessage]=useState("");
   const [form,setForm]=useState({away_score:"",home_score:"",favorite_team:"",favorite_spread:"",spread_text:"",over_under_line:""});
   const [showNew,setShowNew]=useState(false);
   const [newGame,setNewGame]=useState({season:new Date().getFullYear(),game_date:"",game_time:"",away_team:"",home_team:"",favorite_team:"",favorite_spread:"",spread_text:"",over_under_line:"",game_type:""});
@@ -137,6 +138,32 @@ export default function Home() {
     finally{setClosingLineRefreshBusy(false);}
   }
 
+  async function loadCachedCurrentLines(){
+    try{
+      const response=await fetch("/api/current-lines",{cache:"no-store"});
+      const data=await readApiJson(response,"Unable to load saved current Vegas lines");
+      if(!response.ok)throw new Error(data.error||"Unable to load saved current Vegas lines");
+      setCurrentLines(data.games||[]);
+      const ready=(data.games||[]).filter(game=>game.spreadPoints!==null||game.overUnder!==null).length;
+      setCurrentLinesMessage(data.fetchedAt
+        ? `Saved odds: ${ready} of ${(data.games||[]).length} upcoming games · updated ${new Date(data.fetchedAt).toLocaleString()}`
+        : "No saved current lines yet. Use Refresh Current Vegas Lines to load them.");
+    }catch(error){setCurrentLinesMessage(error.message);}
+  }
+
+  async function refreshCurrentLines(){
+    setCurrentLinesBusy(true);setCurrentLinesMessage("");
+    try{
+      const response=await fetch("/api/current-lines",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({})});
+      const data=await readApiJson(response,"Unable to refresh current Vegas lines");
+      if(!response.ok)throw new Error(data.error||"Unable to refresh current Vegas lines");
+      setCurrentLines(data.games||[]);
+      const ready=(data.games||[]).filter(game=>game.spreadPoints!==null||game.overUnder!==null).length;
+      setCurrentLinesMessage(`Updated current odds for ${ready} of ${(data.games||[]).length} upcoming games · ${data.fetchedAt?new Date(data.fetchedAt).toLocaleTimeString():"just now"}`);
+    }catch(error){setCurrentLinesMessage(error.message);}
+    finally{setCurrentLinesBusy(false);}
+  }
+
   async function loadGames() {
     setBusy(true); setMessage("");
     try {
@@ -157,9 +184,11 @@ export default function Home() {
     } catch(e) { setMessage(e.message); } finally { setBusy(false); }
   }
   useEffect(()=>{if(tab!=="Market Predictions")loadGames();},[competition,season,team,status,tab]);
+  useEffect(()=>{if(tab==="Market Predictions")loadCachedCurrentLines();},[tab]);
   useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(""),2600);return ()=>clearTimeout(timer);},[toast]);
   useEffect(()=>{if(!dataRefreshMessage)return;const timer=setTimeout(()=>setDataRefreshMessage(""),7000);return ()=>clearTimeout(timer);},[dataRefreshMessage]);
   useEffect(()=>{if(!closingLineRefreshMessage)return;const timer=setTimeout(()=>setClosingLineRefreshMessage(""),7000);return ()=>clearTimeout(timer);},[closingLineRefreshMessage]);
+  useEffect(()=>{if(!currentLinesMessage)return;const timer=setTimeout(()=>setCurrentLinesMessage(""),7000);return ()=>clearTimeout(timer);},[currentLinesMessage]);
   async function runPredictionGeneration(){
     setPredictionBusy(true);setPredictionError("");
     try{
@@ -549,16 +578,19 @@ export default function Home() {
         </section>
         <section className="prediction-phase">
           <div className="prediction-phase-head"><span className="prediction-phase-number">02</span><div><span className="eyebrow">PHASE 2 · UPCOMING GAMES</span><h3>Pregame predictions</h3><p>Every game in the current NFL week stays visible until its final score is entered. Pregame forecasts remain on screen after kickoff and are not refreshed once a game starts.</p></div></div>
+          <div className="prediction-topline"><span className="trend-footnote">Saved current sportsbook odds · refreshes overnight or when you press the button · separate from closing lines</span><button type="button" style={buttonStyle} disabled={currentLinesBusy} onClick={refreshCurrentLines}>{currentLinesBusy?"Loading current lines…":"Refresh current Vegas lines"}</button></div>
+          {currentLinesMessage&&<div className="notice" role="status">{currentLinesMessage}</div>}
           {predictionData.upcoming.length===0?<div className="viz-card"><p className="empty">No uncompleted games remain in the current NFL week.</p></div>:<div className="prediction-game-grid">
             {visiblePredictions.map(game=>{
               const homePct=Math.round(game.predicted_home_win_probability*100),awayPct=100-homePct;
               const homeScore=(game.predicted_total_points+game.predicted_home_margin)/2,awayScore=game.predicted_total_points-homeScore;
               const favorite=homePct>=50?game.home_team:game.away_team;
-              const vegasSpread=game.spread_points==null?null:Number(game.spread_points);
-              const vegasTotal=game.over_under_line==null?null:Number(game.over_under_line);
+              const liveLine=currentLines.find(line=>line.competition_type===game.competition_type&&Number(line.source_game_id)===Number(game.source_game_id));
+              const vegasSpread=liveLine?.spreadPoints==null?null:Number(liveLine.spreadPoints);
+              const vegasTotal=liveLine?.overUnder==null?null:Number(liveLine.overUnder);
               const modelMargin=Number(game.predicted_home_margin);
               const modelSpreadText=!Number.isFinite(modelMargin)?"Unavailable":Math.abs(modelMargin)<0.05?"Pick’em":(modelMargin>0?game.home_team:game.away_team)+" "+Math.abs(modelMargin).toFixed(1)+" pts";
-              const vegasSpreadText=vegasSpread==null?"Waiting for line":!Number.isFinite(vegasSpread)?"Invalid line":vegasSpread===0?"Pick’em":(vegasSpread>0?game.home_team:game.away_team)+" -"+Math.abs(vegasSpread).toFixed(1);
+              const vegasSpreadText=vegasSpread==null?(liveLine?.status==="no_odds"?"No current odds":"Not loaded"):!Number.isFinite(vegasSpread)?"Invalid line":vegasSpread===0?"Pick’em":(vegasSpread>0?game.home_team:game.away_team)+" -"+Math.abs(vegasSpread).toFixed(1);
               return <article className="prediction-game-card" key={game.competition_type+"-"+game.source_game_id}>
                 <div className="prediction-game-meta"><span>{formatDate(game.game_date)} · {formatGameTime(game.game_time)}</span><span className={"prediction-game-status "+(game.game_status==="LIVE"?"live":"upcoming")}>{game.game_status==="LIVE"?"LIVE / STARTED":"UPCOMING"}</span><span className={"prediction-confidence "+game.confidence.toLowerCase()}>{game.confidence} confidence</span></div>
                 <div className="prediction-matchup"><div><small>AWAY</small><b>{game.away_team}</b><strong>{awayScore.toFixed(1)}</strong></div><span className="prediction-at">@</span><div><small>HOME</small><b>{game.home_team}</b><strong>{homeScore.toFixed(1)}</strong></div></div>
@@ -566,9 +598,9 @@ export default function Home() {
                 <div className="prediction-win-track"><i style={{width:awayPct+"%"}}/><i style={{width:homePct+"%"}}/></div>
                 <div className="prediction-favorite">Model lean: <b>{favorite}</b></div>
                 <div className="prediction-market-lines">
-                  <div><span>VEGAS SPREAD</span><b>{vegasSpreadText}</b></div>
+                  <div><span>CURRENT VEGAS SPREAD</span><b>{vegasSpreadText}</b><small>{liveLine?.provider||"Live odds not available"}</small></div>
                   <div><span>MODEL SPREAD</span><b>{modelSpreadText}</b></div>
-                  <div><span>VEGAS TOTAL</span><b>{vegasTotal==null?"Waiting for line":Number.isFinite(vegasTotal)?vegasTotal.toFixed(1):"Invalid line"}</b></div>
+                  <div><span>CURRENT VEGAS TOTAL</span><b>{vegasTotal==null?"Waiting for line":Number.isFinite(vegasTotal)?vegasTotal.toFixed(1):"Invalid line"}</b></div>
                   <div><span>MODEL TOTAL</span><b>{Number.isFinite(Number(game.predicted_total_points))?Number(game.predicted_total_points).toFixed(1):"Unavailable"}</b></div>
                 </div>
                 {(game.predicted_home_cover_probability!=null||game.predicted_over_probability!=null)&&<div className="prediction-probability-footer">{game.predicted_home_cover_probability!=null&&<span>Home cover: <b>{Math.round(game.predicted_home_cover_probability*100)}%</b></span>}{game.predicted_over_probability!=null&&<span>Over: <b>{Math.round(game.predicted_over_probability*100)}%</b></span>}</div>}
