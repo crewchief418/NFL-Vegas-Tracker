@@ -138,15 +138,28 @@ export default function Home() {
     finally{setClosingLineRefreshBusy(false);}
   }
 
+  async function loadCachedCurrentLines(){
+    try{
+      const response=await fetch("/api/current-lines",{cache:"no-store"});
+      const data=await readApiJson(response,"Unable to load saved current Vegas lines");
+      if(!response.ok)throw new Error(data.error||"Unable to load saved current Vegas lines");
+      setCurrentLines(data.games||[]);
+      const ready=(data.games||[]).filter(game=>game.spreadPoints!==null||game.overUnder!==null).length;
+      setCurrentLinesMessage(data.fetchedAt
+        ? `Saved odds: ${ready} of ${(data.games||[]).length} upcoming games · updated ${new Date(data.fetchedAt).toLocaleString()}`
+        : "No saved current lines yet. Use Refresh Current Vegas Lines to load them.");
+    }catch(error){setCurrentLinesMessage(error.message);}
+  }
+
   async function refreshCurrentLines(){
     setCurrentLinesBusy(true);setCurrentLinesMessage("");
     try{
-      const response=await fetch("/api/current-lines",{cache:"no-store"});
-      const data=await readApiJson(response,"Unable to load current Vegas lines");
-      if(!response.ok)throw new Error(data.error||"Unable to load current Vegas lines");
+      const response=await fetch("/api/current-lines",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({})});
+      const data=await readApiJson(response,"Unable to refresh current Vegas lines");
+      if(!response.ok)throw new Error(data.error||"Unable to refresh current Vegas lines");
       setCurrentLines(data.games||[]);
       const ready=(data.games||[]).filter(game=>game.spreadPoints!==null||game.overUnder!==null).length;
-      setCurrentLinesMessage(`Loaded current odds for ${ready} of ${(data.games||[]).length} upcoming games · ${data.fetchedAt?new Date(data.fetchedAt).toLocaleTimeString():"just now"}`);
+      setCurrentLinesMessage(`Updated current odds for ${ready} of ${(data.games||[]).length} upcoming games · ${data.fetchedAt?new Date(data.fetchedAt).toLocaleTimeString():"just now"}`);
     }catch(error){setCurrentLinesMessage(error.message);}
     finally{setCurrentLinesBusy(false);}
   }
@@ -171,7 +184,7 @@ export default function Home() {
     } catch(e) { setMessage(e.message); } finally { setBusy(false); }
   }
   useEffect(()=>{if(tab!=="Market Predictions")loadGames();},[competition,season,team,status,tab]);
-  useEffect(()=>{if(tab==="Market Predictions")refreshCurrentLines();},[tab]);
+  useEffect(()=>{if(tab==="Market Predictions")loadCachedCurrentLines();},[tab]);
   useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(""),2600);return ()=>clearTimeout(timer);},[toast]);
   useEffect(()=>{if(!dataRefreshMessage)return;const timer=setTimeout(()=>setDataRefreshMessage(""),7000);return ()=>clearTimeout(timer);},[dataRefreshMessage]);
   useEffect(()=>{if(!closingLineRefreshMessage)return;const timer=setTimeout(()=>setClosingLineRefreshMessage(""),7000);return ()=>clearTimeout(timer);},[closingLineRefreshMessage]);
