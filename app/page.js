@@ -578,7 +578,7 @@ export default function Home() {
         </section>
         <section className="prediction-phase">
           <div className="prediction-phase-head"><span className="prediction-phase-number">02</span><div><span className="eyebrow">PHASE 2 · UPCOMING GAMES</span><h3>Pregame predictions</h3><p>Every game in the current NFL week stays visible until its final score is entered. Pregame forecasts remain on screen after kickoff and are not refreshed once a game starts.</p></div></div>
-          <div className="prediction-topline"><span className="trend-footnote">Live sportsbook odds for this week's upcoming games · separate from saved closing lines</span><button type="button" style={buttonStyle} disabled={currentLinesBusy} onClick={refreshCurrentLines}>{currentLinesBusy?"Loading current lines…":"Refresh current Vegas lines"}</button></div>
+          <div className="prediction-topline"><span className="trend-footnote">Saved current sportsbook odds · refreshes overnight or when you press the button · separate from closing lines</span><button type="button" style={buttonStyle} disabled={currentLinesBusy} onClick={refreshCurrentLines}>{currentLinesBusy?"Loading current lines…":"Refresh current Vegas lines"}</button></div>
           {currentLinesMessage&&<div className="notice" role="status">{currentLinesMessage}</div>}
           {predictionData.upcoming.length===0?<div className="viz-card"><p className="empty">No uncompleted games remain in the current NFL week.</p></div>:<div className="prediction-game-grid">
             {visiblePredictions.map(game=>{
