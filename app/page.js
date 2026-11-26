@@ -180,8 +180,12 @@ export default function Home() {
       const response=await fetch("/api/games?"+qs), data=await response.json();
       if(!response.ok) throw new Error(data.error||"Unable to load games");
       setGames(data.games||[]);
-      setSelected(current=>current && data.games.some(g=>g.source_game_id===current.source_game_id)
-        ? data.games.find(g=>g.source_game_id===current.source_game_id) : (data.games[0]||null));
+      setSelected(current=>{
+        const next=current&&data.games.some(g=>g.source_game_id===current.source_game_id)
+          ? data.games.find(g=>g.source_game_id===current.source_game_id) : (data.games[0]||null);
+        setForm(previous=>({...previous,away_score:next?.away_score??"",home_score:next?.home_score??""}));
+        return next;
+      });
     } catch(e) { setMessage(e.message); } finally { setBusy(false); }
   }
   useEffect(()=>{if(tab!=="Market Predictions")loadGames();},[competition,season,team,status,tab]);
@@ -263,7 +267,7 @@ export default function Home() {
       spread_text:g.spread_text??"",over_under_line:g.manual_over_under_line??""
     });
     setMessage("");
-    setShowEditor(true);
+    setShowEditor(false);
   }
   function moveSelected(direction) {
     const index=games.findIndex(g=>g.source_game_id===selectedGame?.source_game_id);
@@ -722,9 +726,7 @@ export default function Home() {
         <label>Season<input style={inputStyle} type="number" value={newGame.season} onChange={e=>setNewGame({...newGame,season:e.target.value})} required/></label><label>Game type<select style={inputStyle} value={newGame.game_type} onChange={e=>setNewGame({...newGame,game_type:e.target.value})} required><option value="">Select game type</option><option value="regular season">Regular Season</option><option value="playoffs">Playoffs</option></select></label>
         <label>Date<input style={inputStyle} type="date" value={newGame.game_date} onChange={e=>setNewGame({...newGame,game_date:e.target.value})} required/></label><label>Time<input style={inputStyle} type="time" value={newGame.game_time} onChange={e=>setNewGame({...newGame,game_time:e.target.value})}/></label>
         <label>Away team<select style={inputStyle} value={newGame.away_team} onChange={e=>setNewGame({...newGame,away_team:e.target.value,favorite_team:e.target.value===newGame.favorite_team||newGame.home_team===newGame.favorite_team?newGame.favorite_team:""})} required><option value="">Select away team</option>{Object.keys(teamAssets).sort().map(name=><option key={name} value={name}>{name}</option>)}</select></label><label>Home team<select style={inputStyle} value={newGame.home_team} onChange={e=>setNewGame({...newGame,home_team:e.target.value,favorite_team:e.target.value===newGame.favorite_team||newGame.away_team===newGame.favorite_team?newGame.favorite_team:""})} required><option value="">Select home team</option>{Object.keys(teamAssets).sort().map(name=><option key={name} value={name}>{name}</option>)}</select></label>
-        <label>Favorite team<select style={inputStyle} value={newGame.favorite_team} onChange={e=>setNewGame({...newGame,favorite_team:e.target.value})}><option value="">No favorite</option>{[newGame.away_team,newGame.home_team].filter(Boolean).map(name=><option key={name} value={name}>{name}</option>)}<option value="PK">Pick’em (PK)</option></select></label>
-        <label>Spread (points)<input style={inputStyle} type="number" min="0" step="0.5" value={newGame.favorite_spread} disabled={newGame.favorite_team==="PK"} onChange={e=>setNewGame({...newGame,favorite_spread:e.target.value})} placeholder="e.g. 3.5"/></label>
-        <label className="full">Over/under total<input style={inputStyle} type="number" min="0" step="0.5" value={newGame.over_under_line} onChange={e=>setNewGame({...newGame,over_under_line:e.target.value})} placeholder="e.g. 44.5"/></label>
+        <p className="form-hint full">Sportsbook odds are imported automatically after the game is added. No manual line entry is needed.</p>
       </div><div className="modal-actions"><button type="button" className="secondary" onClick={()=>setShowNew(false)}>Cancel</button><button style={buttonStyle} disabled={busy}>{busy?"Creating…":"Create Game"}</button></div></form></div>}
   </main>;
 }
