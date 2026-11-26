@@ -128,9 +128,10 @@ export async function GET(){
         SELECT season,week,player_id,player_name,team,position,payload FROM ranked WHERE rn<=8
         ORDER BY team,position,player_name,week DESC`,[season]),
       query(`SELECT DISTINCT ON (team,player_id,player_name) team,player_id,player_name,position,
-        report_status,practice_status,injury,report_date
-        FROM public.nflverse_injury_reports WHERE season=$1
-        ORDER BY team,player_id,player_name,report_date DESC`,[season]),
+        week,report_status,practice_status,injury,report_date,imported_at
+        FROM public.nflverse_injury_reports
+        WHERE season=$1 AND season_type='REG'
+        ORDER BY team,player_id,player_name,week DESC,report_date DESC,imported_at DESC`,[season]),
       query(`WITH ranked_defense_games AS (
           SELECT season,week,team,payload->>'team' AS team_code,
             payload->>'opponent_team' AS opponent_team_code,payload,
@@ -166,7 +167,7 @@ export async function GET(){
       const byTeam=(team,opponent)=>{
         const opponentCode=teamCodeByName.get(opponent);
         const defense=defenseProfiles.get(opponentCode);
-        const rows=projected.filter(p=>p.team===team&&p.role_usage>=8).sort((a,b)=>pRank(b)-pRank(a));
+        const rows=projected.filter(p=>p.team===team&&p.role_usage>=8&&p.availability_factor>0).sort((a,b)=>pRank(b)-pRank(a));
         return [
           ...rows.filter(p=>p.position==="QB").slice(0,1),
           ...rows.filter(p=>p.position==="RB").slice(0,3),
