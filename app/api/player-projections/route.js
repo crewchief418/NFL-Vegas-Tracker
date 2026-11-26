@@ -118,7 +118,7 @@ export async function GET(){
       ORDER BY game_date,game_time NULLS LAST,source_game_id`,[window.start,window.end]);
     if(!games.rowCount)return NextResponse.json({week:window,games:[],message:"No upcoming games in the current NFL week."});
     const season=Number(games.rows[0].season);
-    const [stats,injuries,defenseRows,sync]=await Promise.all([
+    const [stats,injuries,defenseRows,depthCharts,sync]=await Promise.all([
       query(`WITH latest_week AS (SELECT MAX(week) AS week FROM public.nflverse_player_weekly_stats WHERE season=$1 AND season_type='REG'),
         ranked AS (SELECT season,week,player_id,player_name,team,position,payload,
           ROW_NUMBER() OVER(PARTITION BY player_id ORDER BY week DESC) AS rn
@@ -147,9 +147,18 @@ export async function GET(){
         FROM ranked_defense_games
         WHERE defense_game_rank<=8
         ORDER BY week DESC`,[season]),
+      query(`SELECT DISTINCT ON (team,position,gsis_id,player_name) team,position,position_name,depth_rank,gsis_id,player_name,snapshot_dt
+        FROM public.nflverse_depth_charts WHERE season=$1
+        ORDER BY team,position,gsis_id,player_name,snapshot_dt DESC,depth_rank ASC`,[season]),
       query(`SELECT last_synced,status FROM public.data_source_sync WHERE source='nflverse_player_stats'`)
     ]);
     const injuryMap=new Map(injuries.rows.map(x=>[`${x.team}:${x.player_id||x.player_name}`,x]));
+    const depthMap=new Map();
+    for(const row of depthCharts.rows){
+      const key=`${row.team}:${row.position}`;
+      if(!depthMap.has(key))depthMap.set(key,[]);
+      depthMap.get(key).push(row);
+    }
     const groups=new Map(),teamCodeByName=new Map();
     for(const row of stats.rows){
       if(row.payload?.team)teamCodeByName.set(row.team,row.payload.team);
@@ -167,12 +176,13 @@ export async function GET(){
       const byTeam=(team,opponent)=>{
         const opponentCode=teamCodeByName.get(opponent);
         const defense=defenseProfiles.get(opponentCode);
-        const rows=projected.filter(p=>p.team===team&&p.role_usage>=8&&p.availability_factor>0).sort((a,b)=>pRank(b)-pRank(a));
+        const teamPlayers=projected.filter(p=>p.team===team&&p.role_usage>=8&&p.availability_factor>0);
+        const select=(position,limit)=>(depthMap.get(`${team}:${position}`)||[]).filter(d=>d.depth_rank<=2)
+          .map(d=>({player:teamPlayers.find(p=>p.player_id===d.gsis_id)||teamPlayers.find(p=>p.player_name.toLowerCase()===d.player_name.toLowerCase()),depth:d}))
+          .filter(x=>x.player).sort((a,b)=>a.depth.depth_rank-b.depth.depth_rank||pRank(b.player)-pRank(a.player))
+          .slice(0,limit).map(x=>({...x.player,depth_chart_rank:x.depth.depth_rank,depth_chart_role:x.depth.depth_rank===1?"Starter":"Backup",depth_chart_updated_at:x.depth.snapshot_dt}));
         return [
-          ...rows.filter(p=>p.position==="QB").slice(0,1),
-          ...rows.filter(p=>p.position==="RB").slice(0,3),
-          ...rows.filter(p=>p.position==="WR").slice(0,5),
-          ...rows.filter(p=>p.position==="TE").slice(0,2)
+          ...select("QB",1),...select("RB",3),...select("WR",5),...select("TE",2)
         ].map(player=>applyMatchup(player,defense,opponent));
       };
       const home=byTeam(game.home_team,game.away_team),away=byTeam(game.away_team,game.home_team);
@@ -181,7 +191,7 @@ export async function GET(){
     return NextResponse.json({week:window,season,games:result,
       dataUpdatedAt:sync.rows[0]?.last_synced||null,dataStatus:sync.rows[0]?.status||"unknown",
       playerRows:stats.rowCount,injuryRows:injuries.rowCount,defenseRows:defenseRows.rowCount,
-      defenseSampleGames:8});
+      defenseSampleGames:8,depthChartRows:depthCharts.rowCount,depthChartUpdatedAt:depthCharts.rows[0]?.snapshot_dt||null});
   }catch(error){
     console.error("GET /api/player-projections:",error);
     return NextResponse.json({error:"Unable to build player projections from the latest nflverse data."},{status:500});
