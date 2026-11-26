@@ -26,7 +26,7 @@ async function loadGames() {
 }
 async function loadExternalContext(upcoming) {
   const currentSeason = Number(upcoming[0]?.season) || new Date().getUTCFullYear();
-  const [teamResult, qbResult, injuryResult, weatherResult, syncResult] = await Promise.all([
+  const [teamResult, playerResult, injuryResult, weatherResult, syncResult] = await Promise.all([
     query(`WITH ranked AS (
       SELECT team,season,season_type,week,payload,ROW_NUMBER() OVER(PARTITION BY team ORDER BY season DESC,
       CASE WHEN season_type='POST' THEN 0 ELSE 1 END,week DESC) AS rn
@@ -36,7 +36,7 @@ async function loadExternalContext(upcoming) {
     query(`WITH ranked AS (
       SELECT team,player_id,player_name,position,season,season_type,week,payload,
       ROW_NUMBER() OVER(PARTITION BY team,player_id ORDER BY CASE WHEN season_type='POST' THEN 0 ELSE 1 END,week DESC) AS rn
-      FROM public.nflverse_player_weekly_stats WHERE position='QB' AND season=$1
+      FROM public.nflverse_player_weekly_stats WHERE position IN ('QB','RB','WR','TE') AND season=$1
     ) SELECT team,player_id,player_name,position,season,season_type,week,payload FROM ranked WHERE rn <= 6 ORDER BY team,player_name,CASE WHEN season_type='POST' THEN 0 ELSE 1 END,week DESC`,[currentSeason]),
     query(`SELECT team,player_id,player_name,position,report_status,practice_status,injury,week
       FROM public.nflverse_injury_reports
@@ -56,7 +56,7 @@ async function loadExternalContext(upcoming) {
     map.get(row.team).push(row);
     return map;
   },new Map());
-  const teamStats=byTeam(teamResult.rows), qbStats=byTeam(qbResult.rows), injuries=byTeam(injuryResult.rows);
+  const teamStats=byTeam(teamResult.rows), playerStats=byTeam(playerResult.rows), injuries=byTeam(injuryResult.rows);
   const weather=new Map(weatherResult.rows.map(row=>[`${row.competition_type}:${row.source_game_id}`,row]));
   const enriched=upcoming.map(game=>({...game,external_context:{
     homeTeamStats:teamStats.get(game.home_team)||[],
@@ -68,7 +68,7 @@ async function loadExternalContext(upcoming) {
     weather:weather.get(`${game.competition_type}:${game.source_game_id}`)||null
   }}));
   return {upcoming:enriched,dataSources:syncResult.rows,dataCoverage:{
-    teamStatRows:teamResult.rows.length,qbStatRows:qbResult.rows.length,
+    teamStatRows:teamResult.rows.length,playerStatRows:playerResult.rows.length,qbStatRows:playerResult.rows.filter(row=>row.position==='QB').length,
     currentInjuryRows:injuryResult.rows.length,weatherGames:weatherResult.rows.length
   }};
 }
