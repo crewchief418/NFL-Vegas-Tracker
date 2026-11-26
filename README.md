@@ -65,16 +65,6 @@ The first external-data refresh runs at the next scheduled time after deployment
 Open-Meteo's no-key API is free for non-commercial use and its data is licensed under CC BY 4.0; attribution is required wherever weather is displayed. Before using this feed in a commercial or monetized version of the app, review Open-Meteo's commercial-use terms and move to an appropriate paid plan or licensed source. nflverse datasets are community-maintained public data; see the [nflverse data schedule](https://nflreadr.nflverse.com/articles/nflverse_data_schedule.html) for refresh timing and source details.
 
 
-## PrizePicks player-prop comparison
-
-The **PrizePicks Comparison** page compares current full-game NFL PrizePicks lines with the separate eight-game player projection model. It matches supported markets (passing, rushing, receiving yards and touchdowns, receptions, targets, completions and interceptions), ranks projection gaps, and labels More/Less direction. Unmatched players and unsupported markets remain visible as coverage gaps rather than receiving fabricated projections.
-
-PrizePicks does not publish a public developer API. This integration uses the independent prizepicksapi.com feed, which is not affiliated with or endorsed by PrizePicks. Create an API key with that provider and set `PRIZEPICKS_API_KEY` as a sensitive Vercel environment variable for Preview and Production. Its published free plan includes 100 monthly credits; this importer requests the NFL board in paginated batches, so monitor usage if you manually refresh frequently.
-
-The importer stores timestamped weekly snapshots in `public.prizepicks_projection_snapshots`; each import is preserved so line changes can be reviewed instead of overwritten. The board is imported automatically every Tuesday at 10:15 UTC through `/api/prizepicks`, and the page includes a manual **Import / Refresh PrizePicks** action. The current week is keyed to the Monday–Sunday Eastern-time window. Only full-game markets are compared; quarter/half markets are excluded. The comparison is a projection gap, not a probability or a guaranteed betting edge.
-
-Apply `db/migrations/20261126_prizepicks_comparison.sql` to create the snapshot and import-run tables.
-
 ## ESPN closing lines
 
 The app can import the highest-priority sportsbook closing spread and game total from ESPN's public, undocumented NFL odds endpoints. Completed games are matched to ESPN events by game date and both teams. ESPN's provider priority is used to select one sportsbook consistently; live-only and model providers are excluded.
