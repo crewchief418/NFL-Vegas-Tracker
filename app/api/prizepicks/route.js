@@ -33,7 +33,7 @@ async function fetchBoard() {
   const all = [];
   let cursor = null;
   for (let page = 0; page < 8; page++) {
-    const url = new URL("https://api.prizepicksapi.com/api/v1/projections");
+    const url = new URL("https://prizepicksapi.com/api/v1/projections");
     url.searchParams.set("league", "NFL");
     url.searchParams.set("limit", "1000");
     url.searchParams.set("view", "compact");
@@ -48,7 +48,10 @@ async function fetchBoard() {
       cache: "no-store",
       signal: AbortSignal.timeout(25000)
     });
-    if (!response.ok) throw new Error(`PrizePicks feed returned HTTP ${response.status}.`);
+    if (!response.ok) {
+      const detail = (await response.text()).slice(0, 240);
+      throw new Error(`PrizePicks feed returned HTTP ${response.status}${detail ? `: ${detail}` : "."}`);
+    }
     const payload = await response.json();
     if (!Array.isArray(payload.data)) throw new Error("PrizePicks feed returned an unexpected board format.");
     all.push(...payload.data);
@@ -89,7 +92,7 @@ function normalize(row, week) {
     tier: String(tier).toLowerCase(),
     more_available: selectionAvailable(selections, "more"),
     less_available: selectionAvailable(selections, "less"),
-    source_updated_at: row.source_updated_at || null,
+    source_updated_at: row.source_updated_at || row.observed_at || null,
     source_payload: row
   };
 }
