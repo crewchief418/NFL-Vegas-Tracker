@@ -180,11 +180,12 @@ export default function Home() {
       const response=await fetch("/api/games?"+qs), data=await response.json();
       if(!response.ok) throw new Error(data.error||"Unable to load games");
       setGames(data.games||[]);
-      setSelected(current=>current && data.games.some(g=>g.source_game_id===current.source_game_id)?current:null);
+      setSelected(current=>current && data.games.some(g=>g.source_game_id===current.source_game_id)
+        ? data.games.find(g=>g.source_game_id===current.source_game_id) : (data.games[0]||null));
     } catch(e) { setMessage(e.message); } finally { setBusy(false); }
   }
   useEffect(()=>{if(tab!=="Market Predictions")loadGames();},[competition,season,team,status,tab]);
-  useEffect(()=>{if(tab==="Market Predictions")loadCachedCurrentLines();},[tab]);
+  useEffect(()=>{if(tab==="Market Predictions"||tab==="Game Tracker")loadCachedCurrentLines();},[tab]);
   useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(""),2600);return ()=>clearTimeout(timer);},[toast]);
   useEffect(()=>{if(!dataRefreshMessage)return;const timer=setTimeout(()=>setDataRefreshMessage(""),7000);return ()=>clearTimeout(timer);},[dataRefreshMessage]);
   useEffect(()=>{if(!closingLineRefreshMessage)return;const timer=setTimeout(()=>setClosingLineRefreshMessage(""),7000);return ()=>clearTimeout(timer);},[closingLineRefreshMessage]);
@@ -203,7 +204,7 @@ export default function Home() {
     finally{setPredictionBusy(false);}
   }
   useEffect(()=>{
-    if(!["Market Predictions","Predictions","Model Performance","Why This Pick","Simulation Center"].includes(tab))return;
+    if(!["Game Tracker","Market Predictions","Predictions","Model Performance","Why This Pick","Simulation Center"].includes(tab))return;
     let cancelled=false;
     async function loadSavedPredictions(){
       setPredictionBusy(true);setPredictionError("");
@@ -230,6 +231,26 @@ export default function Home() {
   const nextGames=visibleGames.filter(g=>!hasFinalScore(g)&&String(g.game_date).slice(0,10)>=todayKey).sort((a,b)=>a.game_date.localeCompare(b.game_date));
   const completedGames=visibleGames.filter(hasFinalScore).sort((a,b)=>b.game_date.localeCompare(a.game_date));
   const ouGradedCount=completed.filter(g=>g.over_under_line!=null&&g.total_points!=null).length;
+  const trackerForecasts=[...(predictionData?.upcoming||[]),...(predictionData?.performance?.recent||[])];
+  function forecastForGame(game){
+    return trackerForecasts.find(row=>row.competition_type===game.competition_type&&
+      Number(row.source_game_id)===Number(game.source_game_id))||
+      trackerForecasts.find(row=>row.away_team===game.away_team&&row.home_team===game.home_team&&
+        String(row.game_date).slice(0,10)===String(game.game_date).slice(0,10))||null;
+  }
+  function lineLabel(game,spread){
+    if(spread==null)return "Not available";
+    const n=Number(spread);
+    if(n===0)return "Pick’em";
+    return (n>0?game.home_team:game.away_team)+" -"+Math.abs(n).toFixed(1);
+  }
+  function modelLineLabel(game,forecast){
+    if(!forecast||forecast.predicted_home_margin==null)return "Not available";
+    const n=Number(forecast.predicted_home_margin);
+    if(Math.abs(n)<0.05)return "Pick’em";
+    return (n>0?game.home_team:game.away_team)+" -"+Math.abs(n).toFixed(1);
+  }
+
 
   function chooseGame(g) {
     if(isGameLocked(g)) { setMessage(`🔒 ${g.season} season games are locked. Only ${CURRENT_NFL_SEASON} season games can be edited.`); setShowEditor(false); return; }
@@ -251,11 +272,20 @@ export default function Home() {
   }
   async function saveGame() {
     if(!selectedGame)return;
+    if(form.away_score===""||form.home_score===""){setMessage("Enter both final scores.");return;}
     setBusy(true);setMessage("");
     try {
-      const response=await fetch("/api/games",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({...form,competition_type:selectedGame.competition_type,source_game_id:selectedGame.source_game_id,away_team:selectedGame.away_team,home_team:selectedGame.home_team})});
-      const data=await response.json();if(!response.ok)throw new Error(data.error||"Save failed");
-      setShowEditor(false);setToast(data.ats_result==="push"?"Saved · ATS push":"Game saved");await loadGames();
+      const response=await fetch("/api/games",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+        away_score:form.away_score,home_score:form.home_score,
+        competition_type:selectedGame.competition_type,source_game_id:selectedGame.source_game_id,
+        away_team:selectedGame.away_team,home_team:selectedGame.home_team
+      })});
+      const data=await response.json();if(!response.ok)throw new Error(data.error||"Score save failed");
+      setToast(data.ats_result==="push"?"Final score saved · ATS push":"Final score saved");
+      await loadGames();
+      // Closing lines are attached after the game is final by the existing ESPN
+      // closing-line job. Do not block score entry if the scheduled batch is busy.
+      fetch("/api/closing-lines",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({})}).catch(()=>{});
     }catch(e){setMessage(e.message);}finally{setBusy(false);}
   }
   async function createGame(e) {
@@ -438,16 +468,58 @@ export default function Home() {
     </div></div>
     {message&&<div className="notice">{message}</div>}
     {toast&&<div className="save-toast" role="status" aria-live="polite"><span className="save-toast-mark">✓</span>{toast}</div>}
-    {tab==="Game Tracker"?<div className="tracker-layout">
-      <div className="game-list"><div className="game-search"><input aria-label="Search games" style={inputStyle} placeholder="Search team, date, or game ID…" value={gameSearch} onChange={e=>setGameSearch(e.target.value)}/><span>{visibleGames.length.toLocaleString()} games</span></div>
+    {tab==="Game Tracker"?<div className="tracker-layout tracker-layout-redesign">
+      <div className="game-list tracker-game-list">
+        <div className="game-search"><input aria-label="Search games" style={inputStyle} placeholder="Search team, date, or game ID…" value={gameSearch} onChange={e=>setGameSearch(e.target.value)}/><span>{visibleGames.length.toLocaleString()} games</span></div>
         {busy&&!games.length?<p className="empty">Loading games…</p>:<>
-          {needsResults.length>0&&<section className="tracker-group"><div className="tracker-group-heading"><span><b>Needs Results</b><small>Most recent past games missing final scores</small></span><strong>{needsResults.length}</strong></div>{needsResults.map(g=><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}><span><b>{g.away_team} @ {g.home_team}</b><small>{formatDate(g.game_date)} · {g.game_time||"Time TBD"} · {g.game_type||"Game"}{g.favorite_team?" · Fav: "+g.favorite_team+" -"+(g.favorite_spread??""):""}{g.over_under_line!=null?" · O/U "+g.over_under_line:""}</small>{((g.closing_spread_points!=null||g.closing_over_under_line!=null))&&<small className="closing-line-note">ESPN close: {g.closing_spread_points==null?"spread —":g.closing_spread_points===0?"PK":(g.closing_spread_points>0?g.home_team:g.away_team)+" -"+Math.abs(Number(g.closing_spread_points))} · O/U {g.closing_over_under_line??"—"} · {g.closing_provider||g.closing_line_status}</small>}</span><span className="score">0 - 0</span></button>)}</section>}
-          {nextGames.map(g=><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}><span><b>{g.away_team} @ {g.home_team}</b><small>{formatDate(g.game_date)} · {g.game_time||"Time TBD"} · {g.game_type||"Game"}{g.favorite_team?" · Fav: "+g.favorite_team+" -"+(g.favorite_spread??""):""}{g.over_under_line!=null?" · O/U "+g.over_under_line:""}</small>{((g.closing_spread_points!=null||g.closing_over_under_line!=null))&&<small className="closing-line-note">ESPN close: {g.closing_spread_points==null?"spread —":g.closing_spread_points===0?"PK":(g.closing_spread_points>0?g.home_team:g.away_team)+" -"+Math.abs(Number(g.closing_spread_points))} · O/U {g.closing_over_under_line??"—"} · {g.closing_provider||g.closing_line_status}</small>}</span><span className="score">0 - 0</span></button>)}
-          {completedGames.length>0&&<details className="tracker-completed" open={status==="completed"}><summary>Completed Games <span>{completedGames.length}</span></summary>{completedGames.map(g=><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}><span><b>{g.away_team} @ {g.home_team}</b><small>{formatDate(g.game_date)} · {g.game_time||"Time TBD"} · {g.game_type||"Game"}{g.favorite_team?" · Fav: "+g.favorite_team+" -"+(g.favorite_spread??""):""}{g.over_under_line!=null?" · O/U "+g.over_under_line:""}</small>{((g.closing_spread_points!=null||g.closing_over_under_line!=null))&&<small className="closing-line-note">ESPN close: {g.closing_spread_points==null?"spread —":g.closing_spread_points===0?"PK":(g.closing_spread_points>0?g.home_team:g.away_team)+" -"+Math.abs(Number(g.closing_spread_points))} · O/U {g.closing_over_under_line??"—"} · {g.closing_provider||g.closing_line_status}</small>}</span><span className="score">{g.away_score} - {g.home_score}</span></button>)}</details>}
+          {needsResults.length>0&&<section className="tracker-group"><div className="tracker-group-heading"><span><b>Needs Results</b><small>Final score still needed</small></span><strong>{needsResults.length}</strong></div>{needsResults.map(g=><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}><span><b>{g.away_team} @ {g.home_team}</b><small>{formatDate(g.game_date)} · {g.game_time||"Time TBD"}</small></span><span className="tracker-status pending-score">Score needed</span></button>)}</section>}
+          {nextGames.length>0&&<section className="tracker-group"><div className="tracker-group-heading"><span><b>Upcoming Games</b><small>Odds load automatically as ESPN makes them available</small></span><strong>{nextGames.length}</strong></div>{nextGames.map(g=><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}><span><b>{g.away_team} @ {g.home_team}</b><small>{formatDate(g.game_date)} · {g.game_time||"Time TBD"}</small></span><span className="tracker-status">{g.opening_spread_points!=null||g.opening_over_under_line!=null?"Odds loaded":"Waiting for odds"}</span></button>)}</section>}
+          {completedGames.length>0&&<details className="tracker-completed" open={status==="completed"}><summary>Completed Games <span>{completedGames.length}</span></summary>{completedGames.map(g=><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}><span><b>{g.away_team} @ {g.home_team}</b><small>{formatDate(g.game_date)} · {g.game_time||"Time TBD"}</small></span><span className="score">{g.away_score} – {g.home_score}</span></button>)}</details>}
         </>}
         {!visibleGames.length&&!busy&&<p className="empty">No games match this search and filter.</p>}
       </div>
-
+      <section className="tracker-detail">
+        {!selectedGame?<div className="empty-state"><h3>Select a game</h3><p>Choose a matchup to see its model forecast, opening odds, closing odds and score entry.</p></div>:(()=>{
+          const game=selectedGame,forecast=forecastForGame(game);
+          const modelMargin=forecast?.predicted_home_margin==null?null:Number(forecast.predicted_home_margin);
+          const modelTotal=forecast?.predicted_total_points==null?null:Number(forecast.predicted_total_points);
+          const openingSpread=game.opening_spread_points==null?null:Number(game.opening_spread_points);
+          const openingTotal=game.opening_over_under_line==null?null:Number(game.opening_over_under_line);
+          const closingSpread=game.closing_spread_points==null?null:Number(game.closing_spread_points);
+          const closingTotal=game.closing_over_under_line==null?null:Number(game.closing_over_under_line);
+          const final=game.away_score!=null&&game.home_score!=null;
+          const actualMargin=final?Number(game.home_score)-Number(game.away_score):null;
+          const actualTotal=final?Number(game.home_score)+Number(game.away_score):null;
+          const marginError=value=>value==null||actualMargin==null?null:Math.abs(actualMargin-value);
+          const totalError=value=>value==null||actualTotal==null?null:Math.abs(actualTotal-value);
+          const modelMarginError=marginError(modelMargin),openMarginError=marginError(openingSpread),closeMarginError=marginError(closingSpread);
+          const modelTotalError=totalError(modelTotal),openTotalError=totalError(openingTotal),closeTotalError=totalError(closingTotal);
+          const closer=(a,b)=>a==null||b==null?null:a<b?"Model":a>b?"Vegas":"Tie";
+          const scoreText=value=>value==null?"—":Number(value).toFixed(1);
+          return <>
+            <div className="tracker-matchup-head">
+              <div className="tracker-team"><img src={teamLogoUrl(game.away_team)} alt="" onError={e=>{e.currentTarget.style.display="none";}}/><div><h2>{game.away_team}</h2><span>Away</span></div></div>
+              <b className="tracker-at">@</b>
+              <div className="tracker-team tracker-team-home"><img src={teamLogoUrl(game.home_team)} alt="" onError={e=>{e.currentTarget.style.display="none";}}/><div><h2>{game.home_team}</h2><span>Home</span></div></div>
+              <div className="tracker-game-meta">{formatDate(game.game_date)} · {formatGameTime(game.game_time)}</div>
+            </div>
+            <div className="tracker-value-grid">
+              <article className="tracker-value-card"><h3>Model Prediction <small>(Pre-Game)</small></h3><strong>{modelLineLabel(game,forecast)}</strong><b>Total: {scoreText(modelTotal)}</b><span>{forecast?"Saved pregame forecast":"No saved forecast found"}</span></article>
+              <article className="tracker-value-card"><h3>Opening Vegas Odds <small>(Automatic)</small></h3><strong>{lineLabel(game,openingSpread)}</strong><b>Total: {scoreText(openingTotal)}</b><span>{game.opening_provider||"Awaiting first odds snapshot"}</span></article>
+              <article className="tracker-value-card"><h3>Closing Vegas Odds <small>(Automatic)</small></h3><strong>{lineLabel(game,closingSpread)}</strong><b>Total: {scoreText(closingTotal)}</b><span>{game.closing_provider||game.closing_line_status||"Captured after game final"}</span></article>
+              <article className="tracker-value-card tracker-score-card"><h3>Final Score <small>(Your Input)</small></h3><div className="tracker-score-inputs"><label>{game.away_team}<input type="number" min="0" step="1" value={form.away_score} onChange={e=>setForm({...form,away_score:e.target.value})} placeholder="—"/></label><label>{game.home_team}<input type="number" min="0" step="1" value={form.home_score} onChange={e=>setForm({...form,home_score:e.target.value})} placeholder="—"/></label></div><button type="button" style={{...buttonStyle,width:"100%"}} disabled={busy||isGameLocked(game)||form.away_score===""||form.home_score===""} onClick={saveGame}>{busy?"Saving…":final?"Update Final Score":"Save Final Score"}</button></article>
+            </div>
+            {final?<section className="tracker-analysis">
+              <div className="tracker-analysis-heading"><h3>Game Complete · Analysis Ready</h3><span>{game.away_score}–{game.home_score} Final</span></div>
+              <div className="tracker-analysis-columns">
+                <div><h4>Spread Analysis</h4><p><span>Model prediction</span><b>{modelLineLabel(game,forecast)} · Error {scoreText(modelMarginError)}</b></p><p><span>Opening line</span><b>{lineLabel(game,openingSpread)} · Error {scoreText(openMarginError)}</b></p><p><span>Closing line</span><b>{lineLabel(game,closingSpread)} · Error {scoreText(closeMarginError)}</b></p><p><span>Actual margin</span><b>{actualMargin>0?game.home_team:actualMargin<0?game.away_team:"Tie"} {Math.abs(actualMargin)}</b></p><strong className="tracker-verdict">{closer(modelMarginError,openMarginError)==="Model"&&closer(modelMarginError,closeMarginError)==="Model"?"Model beat both market snapshots":closer(modelMarginError,closeMarginError)==="Model"?"Model closer than closing line": "Spread comparison available"}</strong></div>
+                <div><h4>Total Analysis</h4><p><span>Model prediction</span><b>{scoreText(modelTotal)} · Error {scoreText(modelTotalError)}</b></p><p><span>Opening total</span><b>{scoreText(openingTotal)} · Error {scoreText(openTotalError)}</b></p><p><span>Closing total</span><b>{scoreText(closingTotal)} · Error {scoreText(closeTotalError)}</b></p><p><span>Actual total</span><b>{actualTotal}</b></p><strong className="tracker-verdict">{closer(modelTotalError,closeTotalError)==="Model"?"Model beat closing total":closer(modelTotalError,closeTotalError)==="Vegas"?"Closing total was closer":"Total comparison available"}</strong></div>
+              </div>
+              <p className="tracker-analysis-note">Error is the absolute point difference between the projected margin/total and the final result. Missing lines or forecasts are left ungraded.</p>
+            </section>:<div className="tracker-pregame-note">Opening odds and the saved pregame model forecast are preserved for this matchup. After the game ends, enter only the two final scores; closing odds and the comparison are handled automatically.</div>}
+          </>;
+        })()}
+      </section>
     </div>:tab==="Overview"?<div className="analytics overview-dashboard">
       <div className="overview-hero"><div><span className="eyebrow">NFL ANALYTICS AT A GLANCE</span><h3>Your league-wide dashboard</h3><p>Historical results, team performance and betting trends in one place. Choose any chart or section from the navigation to dig deeper.</p></div><div className="overview-season"><strong>{CURRENT_NFL_SEASON}</strong><span>SEASON VIEW</span></div></div>
       <div className="performance-cards overview-metrics">
@@ -645,15 +717,6 @@ export default function Home() {
     {tab==="Points" && analyticsTable()}
     </div>}
     </section>
-    {showEditor&&selectedGame&&<div className="modal-backdrop editor-backdrop" onClick={()=>setShowEditor(false)}><section className="editor editor-modal" onClick={e=>e.stopPropagation()}><div className="editor-modal-head"><div><span className="eyebrow">GAME EDITOR · #{selectedGame.source_game_id}</span><h3>{selectedGame.away_team} <i>@</i> {selectedGame.home_team}</h3><p className="muted">{formatDate(selectedGame.game_date)} · {selectedGame.season} {selectedGame.game_type||""}</p></div><button className="close" onClick={()=>setShowEditor(false)}>×</button></div>
-      <div className="editor-nav"><button className="secondary" onClick={()=>moveSelected(-1)} disabled={games.findIndex(g=>g.source_game_id===selectedGame.source_game_id)===0}>← Previous game</button><button className="secondary" onClick={()=>moveSelected(1)} disabled={games.findIndex(g=>g.source_game_id===selectedGame.source_game_id)===games.length-1}>Next game →</button></div>
-      <div className="score-grid"><label>{selectedGame.away_team} score<input autoFocus style={inputStyle} type="number" min="0" value={form.away_score} onChange={e=>setForm({...form,away_score:e.target.value})}/></label><label>{selectedGame.home_team} score<input style={inputStyle} type="number" min="0" value={form.home_score} onChange={e=>setForm({...form,home_score:e.target.value})}/></label></div>
-      {(selectedGame.closing_spread_points!=null||selectedGame.closing_over_under_line!=null)&&<div className="editor-meta"><span>ESPN closing line · {selectedGame.closing_provider||"Sportsbook"}</span><b>{selectedGame.closing_spread_points==null?"Spread unavailable":selectedGame.closing_spread_points===0?"Pick’em":(selectedGame.closing_spread_points>0?selectedGame.home_team:selectedGame.away_team)+" -"+Math.abs(Number(selectedGame.closing_spread_points))} · O/U {selectedGame.closing_over_under_line??"—"}</b></div>}
-      <div className="form-grid"><label>Manual favorite team<select style={inputStyle} value={form.favorite_team} onChange={e=>setForm({...form,favorite_team:e.target.value})}><option value="">No favorite</option><option value={selectedGame.away_team}>{selectedGame.away_team}</option><option value={selectedGame.home_team}>{selectedGame.home_team}</option><option value="PK">Pick’em (PK)</option></select></label><label>Manual spread (points)<input style={inputStyle} type="number" min="0" step="0.5" value={form.favorite_spread} disabled={form.favorite_team==="PK"} onChange={e=>setForm({...form,favorite_spread:e.target.value})} placeholder="e.g. 3.5"/></label><label className="full">Manual over/under line<input style={inputStyle} type="number" min="0" step="0.5" value={form.over_under_line} onChange={e=>setForm({...form,over_under_line:e.target.value})} placeholder="e.g. 44.5"/></label></div>
-      {form.favorite_team==="PK"&&<p className="muted">Pick’em · spread is automatically zero.</p>}
-      <div className="editor-meta"><span>Actual game total (from scores)</span><b>{form.away_score!==""&&form.home_score!==""?Number(form.away_score)+Number(form.home_score):"—"}</b></div>
-      <button style={{...buttonStyle,width:"100%",marginTop:16}} disabled={busy} onClick={saveGame}>{busy?"Saving…":"Save Game Results & Lines"}</button>
-    </section></div>}
     {showNew&&<div className="modal-backdrop" onClick={()=>setShowNew(false)}><form className="modal" onSubmit={createGame} onClick={e=>e.stopPropagation()}><div className="modal-head"><div><span className="eyebrow">MANUAL ENTRY</span><h2>Add New Game</h2></div><button type="button" className="close" onClick={()=>setShowNew(false)}>×</button></div>
       <div className="form-grid">
         <label>Season<input style={inputStyle} type="number" value={newGame.season} onChange={e=>setNewGame({...newGame,season:e.target.value})} required/></label><label>Game type<select style={inputStyle} value={newGame.game_type} onChange={e=>setNewGame({...newGame,game_type:e.target.value})} required><option value="">Select game type</option><option value="regular season">Regular Season</option><option value="playoffs">Playoffs</option></select></label>
