@@ -32,13 +32,18 @@ async function fetchBoard() {
   if (!key) throw new Error("PRIZEPICKS_API_KEY is not configured in Vercel.");
   const all = [];
   let cursor = null;
-  for (let page = 0; page < 8; page++) {
+  const seenCursors = new Set();
+  for (let page = 0; page < 12; page++) {
     const url = new URL("https://prizepicksapi.com/api/v1/projections");
     url.searchParams.set("league", "NFL");
     url.searchParams.set("limit", "1000");
     url.searchParams.set("view", "compact");
-    url.searchParams.set("status", "all");
-    if (cursor) url.searchParams.set("cursor", cursor);
+    url.searchParams.set("status", "active");
+    if (cursor) {
+      if (seenCursors.has(cursor)) throw new Error("PrizePicks pagination repeated a cursor; stopping to avoid duplicate imports.");
+      seenCursors.add(cursor);
+      url.searchParams.set("cursor", cursor);
+    }
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${key}`,
@@ -57,7 +62,7 @@ async function fetchBoard() {
     all.push(...payload.data);
     cursor = payload.meta?.next_cursor || null;
     if (!cursor) break;
-    if (page === 7) throw new Error("PrizePicks board exceeded the eight-page safety limit.");
+    if (page === 11) throw new Error("PrizePicks active NFL board exceeded the twelve-page safety limit.");
   }
   return all;
 }
