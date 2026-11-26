@@ -64,7 +64,9 @@ function normalize(row, week) {
   const event = row.event || {};
   const starts = event.starts_at ? new Date(event.starts_at) : null;
   if (!player.name || !market.stat || !Number.isFinite(Number(row.line)) || !starts || Number.isNaN(starts.getTime())) return null;
-  const startDate = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(starts);
+  const dateParts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(starts);
+  const dateValues = Object.fromEntries(dateParts.map(part => [part.type, part.value]));
+  const startDate = `${dateValues.year}-${dateValues.month}-${dateValues.day}`;
   const weekEnd = new Date(`${week}T12:00:00Z`);
   weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
   const end = weekEnd.toISOString().slice(0, 10);
@@ -93,8 +95,7 @@ function normalize(row, week) {
 }
 async function importBoard() {
   const week = weekStart(easternDate());
-  await query("INSERT INTO public.prizepicks_import_runs(week_start,status) VALUES($1,'syncing')", [week]);
-  const run = await query("SELECT MAX(id) AS id FROM public.prizepicks_import_runs WHERE week_start=$1", [week]);
+  const run = await query("INSERT INTO public.prizepicks_import_runs(week_start,status) VALUES($1,'syncing') RETURNING id", [week]);
   const runId = run.rows[0]?.id;
   try {
     const raw = await fetchBoard();
