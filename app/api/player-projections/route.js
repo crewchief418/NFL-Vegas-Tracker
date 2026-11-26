@@ -58,7 +58,7 @@ function buildDefenseProfiles(rows){
       const leagueAverage=(league[key]||0)/leagueGames;
       const raw=leagueAverage>0?teamAverage/leagueAverage:1;
       // Small samples and extreme weekly results are deliberately damped.
-      const cap=(key.includes("td")||key==="passing_interceptions")?.20:.12;
+      const cap=(key.includes("td")||key==="passing_interceptions") ? 0.20 : 0.12;
       factors[key]=clamp(1+(raw-1)*.65,1-cap,1+cap);
     }
     profiles.set(team,{games:profile.games,factors});
