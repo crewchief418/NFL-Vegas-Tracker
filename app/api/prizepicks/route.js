@@ -37,7 +37,7 @@ async function fetchBoard() {
     url.searchParams.set("league", "NFL");
     url.searchParams.set("limit", "1000");
     url.searchParams.set("view", "compact");
-    url.searchParams.set("status", "active");
+    url.searchParams.set("status", "all");
     if (cursor) url.searchParams.set("cursor", cursor);
     const response = await fetch(url, {
       headers: {
@@ -119,10 +119,13 @@ async function importBoard() {
 async function readBoard() {
   const week = weekStart(easternDate());
   const [lines, runs] = await Promise.all([
-    query(`SELECT DISTINCT ON (projection_id) projection_id,week_start,captured_at,event_starts_at,player_id,player_name,team,position,opponent,stat,period,line,status,tier,more_available,less_available,source_updated_at
-      FROM public.prizepicks_projection_snapshots
-      WHERE week_start=$1 AND status='active'
-      ORDER BY projection_id,captured_at DESC`, [week]),
+    query(`WITH latest AS (
+        SELECT DISTINCT ON (projection_id) projection_id,week_start,captured_at,event_starts_at,player_id,player_name,team,position,opponent,stat,period,line,status,tier,more_available,less_available,source_updated_at
+        FROM public.prizepicks_projection_snapshots
+        WHERE week_start=$1
+        ORDER BY projection_id,captured_at DESC
+      )
+      SELECT * FROM latest WHERE status='active' ORDER BY event_starts_at,player_name,stat`, [week]),
     query(`SELECT imported_at,row_count,status,error,source_status
       FROM public.prizepicks_import_runs WHERE week_start=$1 ORDER BY imported_at DESC LIMIT 1`, [week])
   ]);
