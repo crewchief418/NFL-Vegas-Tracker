@@ -131,15 +131,20 @@ export async function GET(){
         report_status,practice_status,injury,report_date
         FROM public.nflverse_injury_reports WHERE season=$1
         ORDER BY team,player_id,player_name,report_date DESC`,[season]),
-      query(`WITH latest_week AS (
-          SELECT MAX(week) AS week FROM public.nflverse_team_weekly_stats WHERE season=$1 AND season_type='REG'
+      query(`WITH ranked_defense_games AS (
+          SELECT season,week,team,payload->>'team' AS team_code,
+            payload->>'opponent_team' AS opponent_team_code,payload,
+            ROW_NUMBER() OVER (
+              PARTITION BY payload->>'opponent_team'
+              ORDER BY week DESC, team
+            ) AS defense_game_rank
+          FROM public.nflverse_team_weekly_stats
+          WHERE season=$1 AND season_type='REG'
+            AND NULLIF(payload->>'opponent_team','') IS NOT NULL
         )
-        SELECT season,week,team,payload->>'team' AS team_code,
-          payload->>'opponent_team' AS opponent_team_code,payload
-        FROM public.nflverse_team_weekly_stats
-        WHERE season=$1 AND season_type='REG'
-          AND week > GREATEST(0,(SELECT week FROM latest_week)-8)
-          AND week <= (SELECT week FROM latest_week)
+        SELECT season,week,team,team_code,opponent_team_code,payload
+        FROM ranked_defense_games
+        WHERE defense_game_rank<=8
         ORDER BY week DESC`,[season]),
       query(`SELECT last_synced,status FROM public.data_source_sync WHERE source='nflverse_player_stats'`)
     ]);
@@ -175,7 +180,7 @@ export async function GET(){
     return NextResponse.json({week:window,season,games:result,
       dataUpdatedAt:sync.rows[0]?.last_synced||null,dataStatus:sync.rows[0]?.status||"unknown",
       playerRows:stats.rowCount,injuryRows:injuries.rowCount,defenseRows:defenseRows.rowCount,
-      defenseSampleWeeks:8});
+      defenseSampleGames:8});
   }catch(error){
     console.error("GET /api/player-projections:",error);
     return NextResponse.json({error:"Unable to build player projections from the latest nflverse data."},{status:500});
