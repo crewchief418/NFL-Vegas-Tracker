@@ -89,9 +89,15 @@ export async function GET(){
       return projectPlayer(rows,injury);
     });
     const result=games.rows.map(game=>{
-      const byTeam=team=>projected.filter(p=>p.team===team&&p.availability_factor>0)
-        .filter(p=>p.position==="QB" ? p.attempts>=8 : p.position==="RB" ? (p.carries>=3||p.targets>=2) : p.targets>=2)
-        .sort((a,b)=>pRank(b)-pRank(a));
+      const byTeam=team=>{
+        const rows=projected.filter(p=>p.team===team&&p.role_usage>=8).sort((a,b)=>pRank(b)-pRank(a));
+        return [
+          ...rows.filter(p=>p.position==="QB").slice(0,1),
+          ...rows.filter(p=>p.position==="RB").slice(0,3),
+          ...rows.filter(p=>p.position==="WR").slice(0,5),
+          ...rows.filter(p=>p.position==="TE").slice(0,2)
+        ];
+      };
       const home=byTeam(game.home_team),away=byTeam(game.away_team);
       return {...game,players:{away,home}};
     });
