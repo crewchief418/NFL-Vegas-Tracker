@@ -34,6 +34,20 @@ async function refreshAndSave() {
   try {
     const fresh=await loadCurrentEspnLines();
     const ready=(fresh.games||[]).filter(game=>game.spreadPoints!==null||game.overUnder!==null).length;
+    // Preserve the first pregame market snapshot as the opening line. Later
+    // refreshes must never overwrite it.
+    for (const game of fresh.games||[]) {
+      if (game.spreadPoints===null && game.overUnder===null) continue;
+      await query(`UPDATE public.games SET
+        opening_spread_points=COALESCE(opening_spread_points,$3),
+        opening_over_under_line=COALESCE(opening_over_under_line,$4),
+        opening_favorite_team=COALESCE(opening_favorite_team,$5),
+        opening_provider=COALESCE(opening_provider,$6),
+        opening_updated_at=COALESCE(opening_updated_at,now())
+        WHERE competition_type=$1 AND source_game_id=$2
+          AND (opening_spread_points IS NULL OR opening_over_under_line IS NULL)`,
+        [game.competition_type,game.source_game_id,game.spreadPoints,game.overUnder,game.favorite,game.provider]);
+    }
     await query(`UPDATE public.data_source_sync
       SET status='ready',row_count=$1,last_synced=now(),last_error=NULL,metadata=$2::jsonb
       WHERE source='current_vegas_lines'`,[fresh.games.length,JSON.stringify(fresh)]);
