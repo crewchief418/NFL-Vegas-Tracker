@@ -180,12 +180,10 @@ export default function Home() {
       const response=await fetch("/api/games?"+qs), data=await response.json();
       if(!response.ok) throw new Error(data.error||"Unable to load games");
       setGames(data.games||[]);
-      setSelected(current=>{
-        const next=current&&data.games.some(g=>g.source_game_id===current.source_game_id)
-          ? data.games.find(g=>g.source_game_id===current.source_game_id) : (data.games[0]||null);
-        setForm(previous=>({...previous,away_score:next?.away_score??"",home_score:next?.home_score??""}));
-        return next;
-      });
+      const nextSelected=selected&&data.games.some(g=>g.source_game_id===selected.source_game_id)
+        ? data.games.find(g=>g.source_game_id===selected.source_game_id) : (data.games[0]||null);
+      setSelected(nextSelected);
+      setForm(previous=>({...previous,away_score:nextSelected?.away_score??"",home_score:nextSelected?.home_score??""}));
     } catch(e) { setMessage(e.message); } finally { setBusy(false); }
   }
   useEffect(()=>{if(tab!=="Market Predictions")loadGames();},[competition,season,team,status,tab]);
