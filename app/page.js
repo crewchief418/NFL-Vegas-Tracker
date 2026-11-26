@@ -7,7 +7,7 @@ const navGroups = [
   {label:"Games",items:["Game Tracker","Matchup Analyzer","Game Drill-Down"]},
   {label:"Teams",items:["Team Performance","Points"]},
   {label:"Betting",items:["Against Spread","Over/Under"]},
-  {label:"Predictions",items:["Predictions","Model Performance","Why This Pick","Predicted Player Stats","PrizePicks Comparison","Simulation Center","Market Predictions"]},
+  {label:"Predictions",items:["Predictions","Model Performance","Why This Pick","Predicted Player Stats","Simulation Center","Market Predictions"]},
   {label:"Analytics",items:["Trend Finder","Season Trends","Streak Tracker","Market Insights","Situational Trends","Performance Insights"]}
 ];
 const tabs = navGroups.flatMap(group=>group.items);
@@ -108,25 +108,12 @@ export default function Home() {
   const [simulationData,setSimulationData]=useState(null), [simulationBusy,setSimulationBusy]=useState(false), [simulationError,setSimulationError]=useState("");
   const [selectedPredictionIndex,setSelectedPredictionIndex]=useState(0);
   const [playerProjectionData,setPlayerProjectionData]=useState(null), [playerProjectionBusy,setPlayerProjectionBusy]=useState(false), [playerProjectionError,setPlayerProjectionError]=useState("");
-  const [prizePicksData,setPrizePicksData]=useState(null), [prizePicksBusy,setPrizePicksBusy]=useState(false), [prizePicksError,setPrizePicksError]=useState(""), [prizePicksMessage,setPrizePicksMessage]=useState("");
   const [dataRefreshBusy,setDataRefreshBusy]=useState(false), [dataRefreshMessage,setDataRefreshMessage]=useState("");
   const [closingLineRefreshBusy,setClosingLineRefreshBusy]=useState(false), [closingLineRefreshMessage,setClosingLineRefreshMessage]=useState("");
   const [currentLines,setCurrentLines]=useState([]), [currentLinesBusy,setCurrentLinesBusy]=useState(false), [currentLinesMessage,setCurrentLinesMessage]=useState("");
   const [form,setForm]=useState({away_score:"",home_score:"",favorite_team:"",favorite_spread:"",spread_text:"",over_under_line:""});
   const [showNew,setShowNew]=useState(false);
   const [newGame,setNewGame]=useState({season:new Date().getFullYear(),game_date:"",game_time:"",away_team:"",home_team:"",favorite_team:"",favorite_spread:"",spread_text:"",over_under_line:"",game_type:""});
-
-  async function refreshPrizePicks(){
-    setPrizePicksBusy(true);setPrizePicksError("");setPrizePicksMessage("");
-    try{
-      const response=await fetch("/api/prizepicks",{method:"POST",cache:"no-store"});
-      const data=await readApiJson(response,"Could not import PrizePicks lines");
-      if(!response.ok)throw new Error(data.error||"Could not import PrizePicks lines");
-      setPrizePicksData(data);
-      setPrizePicksMessage(`Imported ${data.imported||data.latestImport?.row_count||0} PrizePicks lines for the week.`);
-    }catch(error){setPrizePicksError(error.message);}
-    finally{setPrizePicksBusy(false);}
-  }
 
   async function refreshDataFeeds(){
     setDataRefreshBusy(true);setDataRefreshMessage("");
@@ -220,7 +207,7 @@ export default function Home() {
     finally{setPredictionBusy(false);}
   }
   useEffect(()=>{
-    if(!["Predicted Player Stats","PrizePicks Comparison"].includes(tab))return;
+    if(!["Predicted Player Stats"].includes(tab))return;
     let cancelled=false;
     async function loadPlayerProjections(){
       setPlayerProjectionBusy(true);setPlayerProjectionError("");
@@ -233,22 +220,6 @@ export default function Home() {
       finally{if(!cancelled)setPlayerProjectionBusy(false);}
     }
     loadPlayerProjections();
-    return()=>{cancelled=true;};
-  },[tab]);
-  useEffect(()=>{
-    if(tab!=="PrizePicks Comparison")return;
-    let cancelled=false;
-    async function loadPrizePicks(){
-      setPrizePicksBusy(true);setPrizePicksError("");
-      try{
-        const response=await fetch("/api/prizepicks",{cache:"no-store"});
-        const data=await readApiJson(response,"Could not load PrizePicks lines");
-        if(!response.ok)throw new Error(data.error||"Could not load PrizePicks lines");
-        if(!cancelled)setPrizePicksData(data);
-      }catch(error){if(!cancelled)setPrizePicksError(error.message);}
-      finally{if(!cancelled)setPrizePicksBusy(false);}
-    }
-    loadPrizePicks();
     return()=>{cancelled=true;};
   },[tab]);
   useEffect(()=>{
@@ -637,51 +608,6 @@ export default function Home() {
         </section>):<div className="empty-state"><h3>No current-week games found</h3><p>Player projections appear once the current week's schedule is available.</p></div>}
         <p className="trend-footnote">Projection method: exponentially weighted average of the last eight available regular-season games, adjusted for current injury designations and the opponent’s last eight weeks of team-level production allowed. Matchup effects are damped and capped to avoid overreacting to small samples. Confirmed inactive lists and historical validation of the matchup weights are not yet included.</p>
       </>}
-    </div>:tab==="PrizePicks Comparison"?<div className="analytics prizepicks-page">
-      <div className="analytics-intro"><span className="eyebrow">PLAYER PROP MARKET CHECK</span><h3>PrizePicks vs. our player model</h3><p>Full-game NFL lines compared with the current eight-game player projections, opponent defense adjustment, injury report and depth-chart role.</p></div>
-      <div className="prediction-topline"><span className="trend-footnote">{prizePicksData?.latestImport?.imported_at?"Last imported "+new Date(prizePicksData.latestImport.imported_at).toLocaleString():prizePicksBusy?"Loading saved PrizePicks board…":"No weekly PrizePicks import yet"} · Week of {formatDate(prizePicksData?.weekStart)}</span><button type="button" style={buttonStyle} disabled={prizePicksBusy} onClick={refreshPrizePicks}>{prizePicksBusy?"Importing board…":"Import / Refresh PrizePicks"}</button></div>
-      {prizePicksError&&<div className="notice">{prizePicksError}</div>}
-      {prizePicksMessage&&<div className="notice" role="status">{prizePicksMessage}</div>}
-      {!prizePicksData?.projections?.length&&!prizePicksBusy?<div className="viz-card"><h4>No PrizePicks board saved for this week</h4><p>Run the import after the PrizePicks API key is configured in Vercel. The weekly import is also scheduled automatically for Tuesday.</p></div>:null}
-      {prizePicksData?.projections?.length>0&&playerProjectionData&&(()=> {
-        const statKeys={
-          "pass yards":"passing_yards","passing yards":"passing_yards","pass td":"passing_tds","pass tds":"passing_tds","passing touchdowns":"passing_tds",
-          "rush yards":"rushing_yards","rushing yards":"rushing_yards","rush td":"rushing_tds","rush tds":"rushing_tds","rushing touchdowns":"rushing_tds",
-          "receiving yards":"receiving_yards","rec yards":"receiving_yards","receptions":"receptions","catches":"receptions","targets":"targets",
-          "receiving td":"receiving_tds","receiving tds":"receiving_tds","pass completions":"completions","completions":"completions",
-          "interceptions":"interceptions","rush attempts":"carries","carries":"carries"
-        };
-        const normalizeName=value=>String(value||"").toLowerCase().replace(/[^a-z0-9]/g,"").replace(/(jr|sr|iii|ii|iv)$/,"");
-        const players=(playerProjectionData.games||[]).flatMap(game=>[
-          ...(game.players?.away||[]).map(player=>({game,player})),
-          ...(game.players?.home||[]).map(player=>({game,player}))
-        ]);
-        const comparisons=(prizePicksData.projections||[]).map(line=>{
-          const key=statKeys[String(line.stat||"").toLowerCase().trim()];
-          const candidates=players.filter(x=>normalizeName(x.player.player_name)===normalizeName(line.player_name));
-          const match=candidates.find(x=>!line.team||!x.player.team_code||String(line.team).toUpperCase()===String(x.player.team_code).toUpperCase())||candidates[0];
-          const model=key&&match&&typeof match.player[key]==="number"?Number(match.player[key]):null;
-          const gap=model==null?null:model-Number(line.line);
-          return {...line,model,gap,match,key};
-        });
-        const matched=comparisons.filter(x=>x.gap!==null).sort((a,b)=>Math.abs(b.gap)-Math.abs(a.gap));
-        const strong=matched.filter(x=>Math.abs(x.gap)>=Math.max(10,Number(x.line)*.1));
-        const unmatched=comparisons.filter(x=>x.gap===null);
-        return <>
-          <div className="performance-cards prediction-stat-cards">
-            <div className="performance-card"><span>ACTIVE FULL-GAME LINES</span><strong>{comparisons.length}</strong><small>Current week's NFL board</small></div>
-            <div className="performance-card"><span>MODEL MATCHES</span><strong>{matched.length}</strong><small>Player and stat matched</small></div>
-            <div className="performance-card"><span>LARGER PROJECTION GAPS</span><strong>{strong.length}</strong><small>At least 10% or 10 stat units</small></div>
-            <div className="performance-card"><span>NOT COMPARABLE</span><strong>{unmatched.length}</strong><small>Unsupported market or unmatched player</small></div>
-          </div>
-          <div className="viz-card"><div className="viz-heading"><div><span className="eyebrow">RANKED BY MODEL GAP</span><h4>Biggest differences</h4></div><span className="viz-note">Positive = More · Negative = Less</span></div>
-            {matched.length?<div className="table-wrap"><table><thead><tr><th>PLAYER</th><th>MATCHUP</th><th>STAT</th><th>PRIZEPICKS</th><th>OUR MODEL</th><th>GAP</th><th>MODEL LEAN</th><th>LINE TYPE</th></tr></thead><tbody>{matched.map(row=><tr key={row.projection_id}><td><b>{row.player_name}</b><small>{row.position||row.team||""}</small></td><td>{row.match.game.away_team} @ {row.match.game.home_team}</td><td>{row.stat}</td><td>{Number(row.line).toFixed(1)}</td><td><b>{row.model.toFixed(1)}</b></td><td><b>{row.gap>0?"+":""}{row.gap.toFixed(1)}</b></td><td>{row.gap>0?"MORE":row.gap<0?"LESS":"NO GAP"}</td><td>{row.tier||"unknown"}</td></tr>)}</tbody></table></div>:<p className="empty">No player/stat matches yet. The comparison only grades markets that our player model actually projects.</p>}
-            <p className="trend-footnote">A projection gap is not a win probability or guaranteed edge. Goblin/demon lines are labeled separately; standard lines are the cleanest comparison.</p>
-          </div>
-          {unmatched.length>0&&<div className="viz-card"><div className="viz-heading"><div><span className="eyebrow">COVERAGE</span><h4>Lines not compared</h4></div><span className="viz-note">{unmatched.length} props</span></div><div className="table-wrap"><table><thead><tr><th>PLAYER</th><th>TEAM</th><th>STAT</th><th>LINE</th><th>REASON</th></tr></thead><tbody>{unmatched.slice(0,60).map(row=><tr key={row.projection_id}><td>{row.player_name}</td><td>{row.team||"—"}</td><td>{row.stat}</td><td>{Number(row.line).toFixed(1)}</td><td>{!row.key?"No matching model stat":"Player not in depth-chart projection list"}</td></tr>)}</tbody></table></div></div>}
-        </>;
-      })()}
-      {prizePicksData?.projections?.length>0&&!playerProjectionData&&<div className="viz-card">{playerProjectionBusy?"Loading our player projections…":"Player projections are not available for this week."}</div>}
     </div>:tab==="Simulation Center"?<div className="analytics simulation-center">
       <div className="analytics-intro"><span className="eyebrow">EMPIRICAL MONTE CARLO</span><h3>Simulate the range of possible game outcomes</h3><p>10,000 outcomes per matchup, sampled from paired scoring-margin and total-point errors observed in chronological walk-forward backtests. Experimental injury, weather and efficiency adjustments are excluded until those inputs have their own historical validation.</p></div>
       <div className="prediction-topline"><span className="trend-footnote">Uses saved pregame model forecasts · does not change prediction history or grading</span><button type="button" style={buttonStyle} disabled={simulationBusy} onClick={async()=>{setSimulationBusy(true);setSimulationError("");try{const response=await fetch("/api/simulations",{cache:"no-store"});const data=await readApiJson(response,"Unable to run simulations");if(!response.ok)throw new Error(data.error||"Unable to run simulations");setSimulationData(data);}catch(error){setSimulationError(error.message);}finally{setSimulationBusy(false);}}}>{simulationBusy?"Simulating…":"Run weekly simulations"}</button></div>
