@@ -794,6 +794,7 @@ input, select { max-width: 100%; }
 .player-projection-name{display:flex;flex-direction:column;gap:3px;min-width:0}
 .player-projection-name b{color:#f2f5f8;font-size:12px}
 .player-projection-name span,.player-projection-name em{color:#91a4ba;font-size:10px;font-style:normal}
+.player-matchup-note{color:#9db4ca;font-size:10px;font-style:normal}
 .player-projection-name em{color:#e8bd65}
 .player-projection-stats{display:flex;flex-wrap:wrap;align-content:center;gap:5px}
 .player-projection-stats span{padding:4px 6px;border:1px solid #34465c;border-radius:5px;background:#172536;color:#dce6f1;font-size:10px;white-space:nowrap}
