@@ -71,7 +71,7 @@ export async function GET(){
           FROM public.nflverse_player_weekly_stats
           WHERE season=$1 AND season_type='REG' AND position IN ('QB','RB','WR','TE')
             AND week <= (SELECT week FROM latest_week))
-        SELECT season,week,player_id,player_name,team,position,payload FROM ranked WHERE rn<=6
+        SELECT season,week,player_id,player_name,team,position,payload FROM ranked WHERE rn<=8
         ORDER BY team,position,player_name,week DESC`,[season]),
       query(`SELECT DISTINCT ON (team,player_id,player_name) team,player_id,player_name,position,
         report_status,practice_status,injury,report_date
