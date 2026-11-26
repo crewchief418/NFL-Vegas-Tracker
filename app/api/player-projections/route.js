@@ -45,7 +45,10 @@ function projectPlayer(rows, injury){
     games_sampled:rows.length,
     injury_status:injury?.report_status||injury?.practice_status||"Available",
     injury:injury?.injury||null,
-    availability_factor:factor
+    availability_factor:factor,
+    role_usage:pos==="QB"?rows.reduce((sum,row)=>sum+n(row.payload?.attempts),0):
+      pos==="RB"?rows.reduce((sum,row)=>sum+n(row.payload?.carries)+n(row.payload?.targets),0):
+      rows.reduce((sum,row)=>sum+n(row.payload?.targets),0)
   };
   if(pos==="QB")return {...base,passing_yards:round(p("passing_yards")),passing_tds:round(p("passing_tds")),interceptions:round(p("passing_interceptions")),rushing_yards:round(p("rushing_yards")),rushing_tds:round(p("rushing_tds")),attempts:round(p("attempts")),completions:round(p("completions"))};
   if(pos==="RB")return {...base,carries:round(p("carries")),rushing_yards:round(p("rushing_yards")),rushing_tds:round(p("rushing_tds")),targets:round(p("targets")),receptions:round(p("receptions")),receiving_yards:round(p("receiving_yards")),receiving_tds:round(p("receiving_tds"))};
