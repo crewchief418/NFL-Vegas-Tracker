@@ -180,7 +180,7 @@ export async function GET(){
         const select=(position,limit)=>(depthMap.get(`${team}:${position}`)||[]).filter(d=>d.depth_rank<=(position==="QB"?1:2))
           .map(d=>({player:teamPlayers.find(p=>p.player_id===d.gsis_id)||teamPlayers.find(p=>p.player_name.toLowerCase()===d.player_name.toLowerCase()),depth:d}))
           .filter(x=>x.player).sort((a,b)=>a.depth.depth_rank-b.depth.depth_rank||pRank(b.player)-pRank(a.player))
-          .slice(0,limit).map(x=>({...x.player,depth_chart_rank:x.depth.depth_rank,depth_chart_role:x.depth.depth_rank===1?"Starter":"Backup",depth_chart_updated_at:x.depth.snapshot_dt}));
+          .slice(0,limit).map(x=>({...x.player,depth_chart_rank:x.depth.depth_rank,depth_chart_role:x.depth.depth_rank===1?"Starter":`Depth ${x.depth.depth_rank}`,depth_chart_updated_at:x.depth.snapshot_dt}));
         return [
           ...select("QB",1),...select("RB",3),...select("WR",5),...select("TE",2)
         ].map(player=>applyMatchup(player,defense,opponent));
