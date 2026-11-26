@@ -48,11 +48,11 @@ export async function GET(request) {
       CASE WHEN closing_spread_points IS NOT NULL THEN CASE WHEN closing_spread_points=0 THEN 'PK'
         ELSE COALESCE(closing_favorite_team,CASE WHEN closing_spread_points>0 THEN home_team ELSE away_team END)||' -'||ABS(closing_spread_points)::text END
         ELSE spread_text END AS spread_text,
-      COALESCE(closing_spread_points,spread_points) AS spread_points,
-      spread_points AS manual_spread_points,favorite_team AS manual_favorite_team,favorite_spread AS manual_favorite_spread,
-      over_under_line AS manual_over_under_line,closing_spread_points,closing_over_under_line,closing_favorite_team,
+      COALESCE(closing_spread_points,opening_spread_points,spread_points) AS spread_points,
+      opening_spread_points,opening_over_under_line,opening_favorite_team,opening_provider,opening_updated_at,
+      closing_spread_points,closing_over_under_line,closing_favorite_team,
       closing_provider,closing_line_status,closing_updated_at,
-      away_score,home_score,total_points,COALESCE(closing_over_under_line,over_under_line) AS over_under_line,
+      away_score,home_score,total_points,COALESCE(closing_over_under_line,opening_over_under_line,over_under_line) AS over_under_line,
       covered_team,ats_result,source_covered_team
       FROM public.games ${where} ORDER BY game_date,game_time NULLS LAST,source_game_id`,values);
     return NextResponse.json({games:result.rows});
@@ -64,35 +64,27 @@ export async function PATCH(request) {
     const body=await request.json(), {competition_type,source_game_id}=body;
     if(!validCompetition(competition_type)||!Number.isInteger(Number(source_game_id)))return NextResponse.json({error:"A valid game identity is required."},{status:400});
     const currentSeason=new Date().getFullYear();
-    const existing=await query("SELECT season,closing_spread_points,closing_over_under_line FROM public.games WHERE competition_type=$1 AND source_game_id=$2",[competition_type,Number(source_game_id)]);
+    const existing=await query("SELECT season,spread_points,opening_spread_points,opening_over_under_line,closing_spread_points,closing_over_under_line FROM public.games WHERE competition_type=$1 AND source_game_id=$2",[competition_type,Number(source_game_id)]);
     if(!existing.rowCount)return NextResponse.json({error:"Game not found."},{status:404});
     if(Number(existing.rows[0].season)<currentSeason)return NextResponse.json({error:`${existing.rows[0].season} season games are locked. Only ${currentSeason} season games can be edited.`},{status:403});
     const awayScore=numericOrNull(body.away_score), homeScore=numericOrNull(body.home_score);
-    const favoriteSpread=numericOrNull(body.favorite_spread), overUnder=numericOrNull(body.over_under_line);
-    const isPick=body.favorite_team==="PK"||String(body.spread_text||"").trim().toUpperCase()==="PK";
-    const favoriteTeam=isPick?"PK":(body.favorite_team||null);
-    if((awayScore!==null&&(!Number.isInteger(awayScore)||awayScore<0))||(homeScore!==null&&(!Number.isInteger(homeScore)||homeScore<0))||
-      ((awayScore===null)!==(homeScore===null))||(Number.isNaN(favoriteSpread)|| (favoriteSpread!==null&&favoriteSpread<0))||
-      (Number.isNaN(overUnder)||(overUnder!==null&&overUnder<0))||
-      (!isPick&&favoriteTeam&&![body.away_team,body.home_team].includes(favoriteTeam))||
-      (!isPick&&favoriteSpread!==null&&favoriteSpread>0&&!favoriteTeam)||
-      (isPick&&favoriteSpread!==null&&favoriteSpread!==0)){
-      return NextResponse.json({error:"Select a valid favorite and non-negative spread, enter a valid over/under, and enter both scores together."},{status:400});
+    if((awayScore!==null&&(!Number.isInteger(awayScore)||awayScore<0))||
+      (homeScore!==null&&(!Number.isInteger(homeScore)||homeScore<0))||
+      ((awayScore===null)!==(homeScore===null))){
+      return NextResponse.json({error:"Enter both final scores as non-negative whole numbers."},{status:400});
     }
-    const favoritePoints=isPick?0:favoriteSpread;
-    const spread=isPick?0:favoritePoints===null?null:favoriteTeam===body.away_team?-favoritePoints:favoriteTeam===body.home_team?favoritePoints:null;
-    const displaySpread=isPick?"PK":favoritePoints===null?null:`${favoriteTeam} -${favoritePoints}`;
-    const effectiveSpread=existing.rows[0].closing_spread_points==null?spread:Number(existing.rows[0].closing_spread_points);
-    const ats=calculateAts(awayScore,homeScore,effectiveSpread);
+    const effectiveSpread=existing.rows[0].closing_spread_points??existing.rows[0].opening_spread_points??existing.rows[0].spread_points;
+    const effectiveTotal=existing.rows[0].closing_over_under_line??existing.rows[0].opening_over_under_line;
+    const ats=calculateAts(awayScore,homeScore,effectiveSpread==null?null:Number(effectiveSpread));
     const actualTotal=awayScore===null?null:awayScore+homeScore;
-    const result=await query(`UPDATE public.games SET away_score=$3,home_score=$4,spread_points=$5,spread_text=$6,
-      favorite_team=$7,favorite_spread=$8,over_under_line=$9,total_points=$10,covered_team=$11,ats_result=$12,updated_at=now()
+    const result=await query(`UPDATE public.games SET away_score=$3,home_score=$4,total_points=$5,
+      covered_team=$6,ats_result=$7,updated_at=now()
       WHERE competition_type=$1 AND source_game_id=$2 RETURNING source_game_id`,
-      [competition_type,Number(source_game_id),awayScore,homeScore,spread,displaySpread,favoriteTeam,favoritePoints,overUnder,actualTotal,
+      [competition_type,Number(source_game_id),awayScore,homeScore,actualTotal,
        ats.covered==="away"?body.away_team:ats.covered==="home"?body.home_team:null,ats.result]);
     if(!result.rowCount)return NextResponse.json({error:"Game not found."},{status:404});
     return NextResponse.json({success:true,ats_result:ats.result,total_points:actualTotal,
-      over_under_line:existing.rows[0].closing_over_under_line??overUnder,
+      over_under_line:effectiveTotal,
       closing_line_used:existing.rows[0].closing_spread_points!=null||existing.rows[0].closing_over_under_line!=null});
   }catch(error){console.error("PATCH /api/games:",error);return NextResponse.json({error:"Unable to save this game."},{status:500});}
 }

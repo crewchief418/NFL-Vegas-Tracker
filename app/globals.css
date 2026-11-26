@@ -655,3 +655,147 @@ input, select { max-width: 100%; }
 
 .drawer-group>.drawer-help{width:100%;display:block;padding:11px 12px;margin:3px 0;border:1px solid transparent;border-radius:8px;background:transparent;color:#c5d0de;text-align:left;font-size:13px;font-weight:750;text-decoration:none;cursor:pointer}
 .drawer-group>.drawer-help:hover{background:#203148}
+
+
+/* Game Tracker: split-pane game queue with a light, card-based analysis workspace. */
+.tracker-layout-redesign{display:grid;grid-template-columns:minmax(250px,310px) minmax(0,1fr);gap:0;align-items:stretch;min-height:680px;border:1px solid #d5deea;border-radius:14px;overflow:hidden;background:#f7f9fc}
+.tracker-game-list{min-width:0;max-height:calc(100vh - 250px);overflow:auto;background:#101c2b;border-right:1px solid #cbd5e1}
+.tracker-game-list .game-search{position:sticky;top:0;z-index:3;padding:12px;background:#101c2b;border-bottom:1px solid #344960}
+.tracker-game-list .game-row{width:100%;text-align:left}
+.tracker-game-list .game-row.chosen{background:#dcecff;color:#10213a;border-left:4px solid #1671db}
+.tracker-game-list .game-row.chosen b{color:#10213a}
+.tracker-status{display:inline-flex;align-items:center;justify-content:center;max-width:110px;padding:6px 8px;border-radius:999px;background:#dcecff;color:#075dbb;font-size:10px;font-weight:850;text-align:center}
+.tracker-detail{min-width:0;padding:18px;background:#f7f9fc;color:#101d34}
+.tracker-matchup-head{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 30px minmax(0,1fr);align-items:center;gap:12px;padding:18px 20px;margin-bottom:14px;border:1px solid #dce4ef;border-radius:12px;background:#fff}
+.tracker-team{display:flex;align-items:center;gap:13px;min-width:0}
+.tracker-team img{width:66px;height:66px;object-fit:contain;flex:0 0 66px}
+.tracker-team h2{margin:0;color:#101d34;font-size:22px;line-height:1.2}
+.tracker-team span{display:block;margin-top:4px;color:#607087;font-size:12px}
+.tracker-team-home{justify-content:flex-end;text-align:right}
+.tracker-at{text-align:center;color:#17263d;font-size:22px}
+.tracker-game-meta{grid-column:1/-1;padding-top:10px;border-top:1px solid #e4eaf2;color:#65758b;font-size:11px;text-align:center}
+.tracker-value-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.tracker-value-card{display:flex;flex-direction:column;gap:10px;min-width:0;padding:15px 13px;border:1px solid #d6dfeb;border-radius:11px;background:#fff;box-shadow:0 2px 7px #10213a0a}
+.tracker-value-card h3{min-height:38px;margin:0;color:#17263d;font-size:13px;line-height:1.35}
+.tracker-value-card h3 small{display:block;color:#607087;font-size:11px;font-weight:650}
+.tracker-value-card>strong{color:#101d34;font-size:18px;line-height:1.25}
+.tracker-value-card>b{color:#18263b;font-size:14px}
+.tracker-value-card>span{margin-top:auto;color:#718096;font-size:10px;line-height:1.4}
+.tracker-score-inputs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tracker-score-inputs label{display:grid;gap:5px;color:#526176;font-size:10px;font-weight:800;text-align:center}
+.tracker-score-inputs input{width:100%;min-width:0;padding:8px 5px;border:1px solid #d6dfeb;border-radius:8px;background:#fff;color:#101d34;font-size:23px;font-weight:850;text-align:center}
+.tracker-score-card button{margin-top:auto!important;padding:10px 8px!important;background:#1769cf!important;color:#fff!important}
+.tracker-analysis{margin-top:16px;padding:15px;border:1px solid #d6dfeb;border-radius:12px;background:#fff}
+.tracker-analysis-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 13px;margin-bottom:15px;border:1px solid #9eddb2;border-radius:9px;background:#e7f8ec;color:#14532d}
+.tracker-analysis-heading h3{margin:0;font-size:14px}
+.tracker-analysis-heading span{font-size:11px;font-weight:800}
+.tracker-analysis-columns{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.tracker-analysis-columns>div{min-width:0}
+.tracker-analysis-columns h4{margin:0 0 10px;color:#14223a;font-size:16px}
+.tracker-analysis-columns p{display:flex;justify-content:space-between;gap:10px;padding:8px 0;margin:0;border-bottom:1px solid #e8edf3;color:#617087;font-size:11px}
+.tracker-analysis-columns p b{color:#17263d;text-align:right}
+.tracker-verdict{display:block;margin-top:11px;padding:10px;border:1px solid #a9dfb8;border-radius:8px;background:#eefaf1;color:#176333;font-size:11px;line-height:1.4}
+.tracker-analysis-note,.tracker-pregame-note{margin:13px 0 0;padding:11px 13px;border-radius:8px;background:#edf2f8;color:#5d6d82;font-size:11px;line-height:1.55}
+.form-hint{margin:0;color:#8fa2b8;font-size:11px;line-height:1.5}
+@media(max-width:1100px){.tracker-value-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tracker-game-list{max-height:calc(100vh - 220px)}}
+@media(max-width:760px){
+ .tracker-layout-redesign{grid-template-columns:1fr;min-height:0}
+ .tracker-game-list{max-height:360px;border-right:0;border-bottom:1px solid #cbd5e1}
+ .tracker-detail{padding:11px}
+ .tracker-matchup-head{padding:14px 10px;gap:6px}
+ .tracker-team{gap:6px}.tracker-team img{width:42px;height:42px;flex-basis:42px}
+ .tracker-team h2{font-size:15px}.tracker-team span{font-size:10px}
+ .tracker-at{font-size:17px}
+ .tracker-value-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .tracker-value-card{padding:12px 10px}
+ .tracker-value-card h3{font-size:12px;min-height:34px}
+ .tracker-value-card>strong{font-size:15px}
+ .tracker-analysis{padding:10px}
+ .tracker-analysis-columns{grid-template-columns:1fr;gap:15px}
+ .tracker-analysis-heading{align-items:flex-start;flex-direction:column;gap:4px}
+}
+@media(max-width:390px){.tracker-value-grid{grid-template-columns:1fr}.tracker-team img{width:34px;height:34px;flex-basis:34px}.tracker-team h2{font-size:13px}}
+
+
+/* Game Tracker refinement: full dark palette and one natural page scroll. */
+.tracker-layout-redesign{
+  background:#0b1220;border-color:#26364b;overflow:visible;
+  min-height:0;align-items:start;
+}
+.tracker-game-list{
+  max-height:none!important;height:auto;overflow:visible!important;
+  background:#0e1929;border-right:1px solid #26364b;
+}
+.tracker-game-list .game-search{
+  position:relative;top:auto;background:#0e1929;border-bottom:1px solid #26364b;
+}
+.tracker-game-list .game-search input{background:#111f32!important;color:#e6edf7!important;border-color:#34465e!important}
+.tracker-game-list .game-row{background:transparent;color:#d8e2ef;border-bottom:1px solid #26364b}
+.tracker-game-list .game-row b{color:#e8eef7}
+.tracker-game-list .game-row small{color:#91a4bb}
+.tracker-game-list .game-row:hover{background:#18283d}
+.tracker-game-list .game-row.chosen{background:#1a3554;color:#f3f7fc;border-left:4px solid #60a5fa}
+.tracker-game-list .game-row.chosen b{color:#fff}
+.tracker-group-heading{background:#111f32;color:#e3ebf5;border-bottom:1px solid #26364b}
+.tracker-group-heading small{color:#91a4bb}
+.tracker-status{background:#1c3552;color:#9bcaff}
+.tracker-status.pending-score{background:#49351a;color:#ffd18a}
+.tracker-completed summary{color:#dbe6f3}
+.tracker-completed summary span{background:#26364b;color:#dbe6f3}
+.tracker-detail{background:#0b1220;color:#e7edf6}
+.tracker-matchup-head{background:#111d2e;border-color:#2a3b52}
+.tracker-team h2,.tracker-at{color:#f1f5fb}
+.tracker-team span,.tracker-game-meta{color:#9aacc1}
+.tracker-game-meta{border-color:#2a3b52}
+.tracker-value-card{background:#111d2e;border-color:#2a3b52;box-shadow:none}
+.tracker-value-card h3,.tracker-value-card>strong,.tracker-value-card>b{color:#edf3fb}
+.tracker-value-card h3 small,.tracker-value-card>span{color:#9aacc1}
+.tracker-score-inputs label{color:#b6c4d5}
+.tracker-score-inputs input{background:#0b1524;border-color:#40536c;color:#fff}
+.tracker-score-card button{background:#2563eb!important}
+.tracker-analysis{background:#111d2e;border-color:#2a3b52}
+.tracker-analysis-heading{background:#142d26;border-color:#286548;color:#a7f3c2}
+.tracker-analysis-columns h4{color:#edf3fb}
+.tracker-analysis-columns p{border-color:#2a3b52;color:#a7b7ca}
+.tracker-analysis-columns p b{color:#e7eef8}
+.tracker-verdict{background:#142d26;border-color:#286548;color:#a7f3c2}
+.tracker-analysis-note,.tracker-pregame-note{background:#17263a;color:#a9bad0}
+.tracker-detail .empty-state,.tracker-game-list .empty{color:#a9bad0}
+.tracker-layout-redesign .tracker-completed{border-color:#26364b}
+@media(max-width:1100px){
+ .tracker-game-list{max-height:none!important;overflow:visible!important}
+}
+@media(max-width:760px){
+ .tracker-layout-redesign{grid-template-columns:minmax(0,1fr);overflow:visible}
+ .tracker-game-list{max-height:none!important;overflow:visible!important;border-right:0;border-bottom:1px solid #26364b}
+ .tracker-game-list .game-search{position:relative;top:auto}
+ .tracker-detail{padding:11px}
+}
+
+
+/* Game Tracker: details expand inline beneath the selected matchup. */
+.tracker-inline-layout{display:block;min-height:0;}
+.tracker-inline-layout .tracker-game-list{width:100%;border:0;max-height:none!important;overflow:visible!important;}
+.tracker-game-entry{display:block;min-width:0;}
+.tracker-game-entry>.game-row{width:100%;}
+.tracker-game-entry .tracker-detail{width:100%;padding:14px 16px 18px;background:#0b1220;border-bottom:1px solid #34465e;}
+.tracker-inline-layout .tracker-group{margin:0;}
+.tracker-inline-layout .tracker-game-entry .game-row.chosen{border-left:4px solid #60a5fa;}
+
+
+/* Weekly player projection dashboard */
+.player-projection-meta{display:flex;flex-wrap:wrap;gap:8px 16px;margin:0 0 14px;color:#9eafc3;font-size:11px;font-weight:750;letter-spacing:.04em}
+.player-game-card{margin-bottom:14px}
+.player-projection-teams{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.player-projection-team{min-width:0;border:1px solid #2c3b4e;border-radius:10px;padding:12px;background:#101a27}
+.player-projection-team h5{display:flex;align-items:center;justify-content:space-between;margin:0 0 8px;color:#f1f5f9;font-size:14px}
+.player-projection-team h5 small{color:#91a4ba;font-size:10px;text-transform:uppercase;letter-spacing:.08em}
+.player-projection-row{display:grid;grid-template-columns:minmax(110px,.8fr) minmax(0,1.6fr);gap:10px;padding:10px 0;border-top:1px solid #263548}
+.player-projection-name{display:flex;flex-direction:column;gap:3px;min-width:0}
+.player-projection-name b{color:#f2f5f8;font-size:12px}
+.player-projection-name span,.player-projection-name em{color:#91a4ba;font-size:10px;font-style:normal}
+.player-matchup-note{color:#9db4ca;font-size:10px;font-style:normal}
+.player-projection-name em{color:#e8bd65}
+.player-projection-stats{display:flex;flex-wrap:wrap;align-content:center;gap:5px}
+.player-projection-stats span{padding:4px 6px;border:1px solid #34465c;border-radius:5px;background:#172536;color:#dce6f1;font-size:10px;white-space:nowrap}
+@media(max-width:760px){.player-projection-teams{grid-template-columns:1fr}.player-projection-row{grid-template-columns:1fr;gap:6px}.player-projection-meta{font-size:10px}}
