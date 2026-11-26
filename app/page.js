@@ -7,7 +7,7 @@ const navGroups = [
   {label:"Games",items:["Game Tracker","Matchup Analyzer","Game Drill-Down"]},
   {label:"Teams",items:["Team Performance","Points"]},
   {label:"Betting",items:["Against Spread","Over/Under"]},
-  {label:"Predictions",items:["Predictions","Model Performance","Why This Pick","Simulation Center","Market Predictions"]},
+  {label:"Predictions",items:["Predictions","Model Performance","Why This Pick","Predicted Player Stats","Simulation Center","Market Predictions"]},
   {label:"Analytics",items:["Trend Finder","Season Trends","Streak Tracker","Market Insights","Situational Trends","Performance Insights"]}
 ];
 const tabs = navGroups.flatMap(group=>group.items);
@@ -107,6 +107,7 @@ export default function Home() {
   const [predictionData,setPredictionData]=useState(null), [predictionBusy,setPredictionBusy]=useState(false), [predictionError,setPredictionError]=useState("");
   const [simulationData,setSimulationData]=useState(null), [simulationBusy,setSimulationBusy]=useState(false), [simulationError,setSimulationError]=useState("");
   const [selectedPredictionIndex,setSelectedPredictionIndex]=useState(0);
+  const [playerProjectionData,setPlayerProjectionData]=useState(null), [playerProjectionBusy,setPlayerProjectionBusy]=useState(false), [playerProjectionError,setPlayerProjectionError]=useState("");
   const [dataRefreshBusy,setDataRefreshBusy]=useState(false), [dataRefreshMessage,setDataRefreshMessage]=useState("");
   const [closingLineRefreshBusy,setClosingLineRefreshBusy]=useState(false), [closingLineRefreshMessage,setClosingLineRefreshMessage]=useState("");
   const [currentLines,setCurrentLines]=useState([]), [currentLinesBusy,setCurrentLinesBusy]=useState(false), [currentLinesMessage,setCurrentLinesMessage]=useState("");
@@ -205,6 +206,22 @@ export default function Home() {
     }catch(error){setPredictionError(error.message);}
     finally{setPredictionBusy(false);}
   }
+  useEffect(()=>{
+    if(tab!=="Predicted Player Stats")return;
+    let cancelled=false;
+    async function loadPlayerProjections(){
+      setPlayerProjectionBusy(true);setPlayerProjectionError("");
+      try{
+        const response=await fetch("/api/player-projections",{cache:"no-store"});
+        const data=await readApiJson(response,"Could not load player projections");
+        if(!response.ok)throw new Error(data.error||"Could not load player projections");
+        if(!cancelled)setPlayerProjectionData(data);
+      }catch(error){if(!cancelled)setPlayerProjectionError(error.message);}
+      finally{if(!cancelled)setPlayerProjectionBusy(false);}
+    }
+    loadPlayerProjections();
+    return()=>{cancelled=true;};
+  },[tab]);
   useEffect(()=>{
     if(!["Game Tracker","Market Predictions","Predictions","Model Performance","Why This Pick","Simulation Center"].includes(tab))return;
     let cancelled=false;
@@ -506,8 +523,8 @@ export default function Home() {
     {tab==="Game Tracker"&&<section className="metrics"><div><span>GAMES IN VIEW</span><strong>{games.length.toLocaleString()}</strong></div><div><span>COMPLETED</span><strong>{completed.length.toLocaleString()}</strong></div><div><span>HOME WINS</span><strong>{homeWins.toLocaleString()}</strong></div><div><span>AWAY WINS</span><strong>{awayWins.toLocaleString()}</strong></div></section>}
     {menuOpen&&<><button type="button" className="drawer-scrim" aria-label="Close navigation menu" onClick={()=>setMenuOpen(false)}/><aside className="side-drawer" aria-label="Main navigation"><div className="drawer-head"><div><span className="eyebrow">NFL VEGAS TRACKER</span><h2>Navigation</h2></div><button type="button" className="drawer-close" aria-label="Close navigation menu" onClick={()=>setMenuOpen(false)}>×</button></div>{navGroups.map(group=><section className="drawer-group" key={group.label}><h3>{group.label}</h3>{group.items.map(item=><button type="button" key={item} className={tab===item?"selected":""} onClick={()=>{setTab(item);setMenuOpen(false);}}>{item}{tab===item&&<span>●</span>}</button>)}</section>)}<section className="drawer-group"><h3>Help</h3><a className="drawer-help" href="/guide" onClick={()=>setMenuOpen(false)}>FAQ / What does this mean?</a></section></aside></>}
     <section className="panel"><div className="toolbar"><div><h2>{tab}</h2><p>{tab==="Market Predictions"?"Current NFL week · pregame forecasts stay visible through the final whistle":competition==="all"?"Regular season + playoffs":competition==="regular"?"Regular season":"Playoffs"} · {tab==="Market Predictions"?"all available seasons":"historical game database"}</p></div><div className="filters">
-      {!["Market Predictions","Predictions","Model Performance","Why This Pick","Simulation Center"].includes(tab)&&<select aria-label="Competition" style={inputStyle} value={competition} onChange={e=>{setCompetition(e.target.value);setSeason("all");setTeam("all");}}><option value="all">Regular + Playoffs</option><option value="regular">Regular Season</option><option value="playoffs">Playoffs</option></select>}
-      {!["Game Tracker","Market Predictions","Predictions","Model Performance","Why This Pick"].includes(tab)&&<select aria-label="Season" style={inputStyle} value={season} onChange={e=>setSeason(e.target.value)}><option value="all">All Seasons</option>{seasons.map(s=><option key={s} value={s}>{s}</option>)}</select>}
+      {!["Market Predictions","Predictions","Model Performance","Why This Pick","Predicted Player Stats","Simulation Center"].includes(tab)&&<select aria-label="Competition" style={inputStyle} value={competition} onChange={e=>{setCompetition(e.target.value);setSeason("all");setTeam("all");}}><option value="all">Regular + Playoffs</option><option value="regular">Regular Season</option><option value="playoffs">Playoffs</option></select>}
+      {!["Game Tracker","Market Predictions","Predictions","Model Performance","Why This Pick","Predicted Player Stats"].includes(tab)&&<select aria-label="Season" style={inputStyle} value={season} onChange={e=>setSeason(e.target.value)}><option value="all">All Seasons</option>{seasons.map(s=><option key={s} value={s}>{s}</option>)}</select>}
       {["Team Performance","Against Spread","Over/Under","Points","Performance Insights"].includes(tab)&&<TeamPicker value={team} onChange={setTeam} teams={Object.keys(teamAssets)} allowAll placeholder="All Teams" compact/>}
       {tab==="Game Tracker"&&<select aria-label="Game status" style={inputStyle} value={status} onChange={e=>setStatus(e.target.value)}><option value="all">All Games</option><option value="completed">Completed</option><option value="upcoming">Not Played</option></select>}
       {tab==="Game Tracker"&&<button style={buttonStyle} disabled={competition==="all"} title={competition==="all"?"Choose Regular Season or Playoffs to add a game":""} onClick={()=>setShowNew(true)}>+ Add Game</button>}
@@ -573,6 +590,24 @@ export default function Home() {
         <div className="performance-cards prediction-stat-cards"><div className="performance-card"><span>WINNER ACCURACY</span><strong>{predictionData.performance?.winner?.accuracy==null?"—":predictionData.performance.winner.accuracy+"%"}</strong><small>{predictionData.performance?.winner?.correct||0} correct · {predictionData.performance?.winner?.incorrect||0} incorrect</small></div><div className="performance-card"><span>ATS ACCURACY</span><strong>{predictionData.performance?.ats?.accuracy==null?"—":predictionData.performance.ats.accuracy+"%"}</strong><small>{predictionData.performance?.ats?.games||0} graded · pushes excluded</small></div><div className="performance-card"><span>O/U ACCURACY</span><strong>{predictionData.performance?.overUnder?.accuracy==null?"—":predictionData.performance.overUnder.accuracy+"%"}</strong><small>{predictionData.performance?.overUnder?.games||0} graded · pushes excluded</small></div></div>
         <div className="viz-card"><div className="viz-heading"><div><span className="eyebrow">SAVED PICKS</span><h4>Accuracy by confidence tier</h4></div></div>{(predictionData.performance?.confidence||[]).map(row=><div className="bar-row" key={row.level}><div><span>{row.level}</span><b>{row.accuracy==null?"—":row.accuracy+"%"}</b></div><div className="bar-track"><i style={{width:row.accuracy==null?"0":row.accuracy+"%"}}/></div><small>{row.games} settled games</small></div>)}</div>
       </section></>}
+    </div>:tab==="Predicted Player Stats"?<div className="analytics player-projections-page">
+      <div className="analytics-intro"><span className="eyebrow">WEEKLY PLAYER FORECASTS</span><h3>Predicted player stats</h3><p>Projections use recent nflverse weekly production and current injury designations. These are estimates, not sportsbook prop lines.</p></div>
+      {playerProjectionError&&<div className="notice">{playerProjectionError}</div>}
+      {playerProjectionBusy&&!playerProjectionData&&<div className="viz-card">Building current-week player projections…</div>}
+      {playerProjectionData&&<>
+        <div className="player-projection-meta"><span>WEEK OF {formatDate(playerProjectionData.week?.start)}</span><span>{playerProjectionData.season} SEASON</span><span>{playerProjectionData.playerRows?.toLocaleString()||0} player game rows analyzed</span><span>Data updated {playerProjectionData.dataUpdatedAt?new Date(playerProjectionData.dataUpdatedAt).toLocaleString():"not available"}</span></div>
+        {playerProjectionData.games?.length?playerProjectionData.games.map(game=><section className="viz-card player-game-card" key={game.competition_type+"-"+game.source_game_id}>
+          <div className="viz-heading"><div><span className="eyebrow">{formatDate(game.game_date)} · {formatGameTime(game.game_time)}</span><h4>{game.away_team} @ {game.home_team}</h4></div><span className="viz-note">Recent form projection</span></div>
+          <div className="player-projection-teams">{[["Away",game.away_team,game.players?.away||[]],["Home",game.home_team,game.players?.home||[]]].map(([side,teamName,players])=><div className="player-projection-team" key={side}>
+            <h5>{teamName} <small>{side}</small></h5>
+            {players.length?players.map(player=><div className="player-projection-row" key={player.player_id}>
+              <div className="player-projection-name"><b>{player.player_name}</b><span>{player.position} · {player.games_sampled} game sample</span>{player.injury_status!=="Available"&&<em>{player.injury_status}{player.injury?" · "+player.injury:""}</em>}</div>
+              <div className="player-projection-stats">{player.position==="QB"?<><span>{player.passing_yards} pass yds</span><span>{player.passing_tds} pass TD</span><span>{player.interceptions} INT</span><span>{player.rushing_yards} rush yds</span><span>{player.rushing_tds} rush TD</span></>:player.position==="RB"?<><span>{player.carries} carries</span><span>{player.rushing_yards} rush yds</span><span>{player.rushing_tds} rush TD</span><span>{player.receptions} rec</span><span>{player.receiving_yards} rec yds</span></>:<><span>{player.targets} targets</span><span>{player.receptions} rec</span><span>{player.receiving_yards} rec yds</span><span>{player.receiving_tds} rec TD</span></>}</div>
+            </div>):<p className="trend-footnote">No qualifying recent player usage data found for this team.</p>}
+          </div>)}</div>
+        </section>):<div className="empty-state"><h3>No current-week games found</h3><p>Player projections appear once the current week's schedule is available.</p></div>}
+        <p className="trend-footnote">Projection method: exponentially weighted average of the last six available regular-season games. Injury designations reduce projected production. The first version does not yet account for matchup-specific defensive tendencies or confirmed inactive lists.</p>
+      </>}
     </div>:tab==="Simulation Center"?<div className="analytics simulation-center">
       <div className="analytics-intro"><span className="eyebrow">EMPIRICAL MONTE CARLO</span><h3>Simulate the range of possible game outcomes</h3><p>10,000 outcomes per matchup, sampled from paired scoring-margin and total-point errors observed in chronological walk-forward backtests. Experimental injury, weather and efficiency adjustments are excluded until those inputs have their own historical validation.</p></div>
       <div className="prediction-topline"><span className="trend-footnote">Uses saved pregame model forecasts · does not change prediction history or grading</span><button type="button" style={buttonStyle} disabled={simulationBusy} onClick={async()=>{setSimulationBusy(true);setSimulationError("");try{const response=await fetch("/api/simulations",{cache:"no-store"});const data=await readApiJson(response,"Unable to run simulations");if(!response.ok)throw new Error(data.error||"Unable to run simulations");setSimulationData(data);}catch(error){setSimulationError(error.message);}finally{setSimulationBusy(false);}}}>{simulationBusy?"Simulating…":"Run weekly simulations"}</button></div>
