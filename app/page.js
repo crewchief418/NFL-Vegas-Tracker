@@ -232,6 +232,50 @@ export default function Home() {
   const needsResults=visibleGames.filter(g=>!hasFinalScore(g)&&String(g.game_date).slice(0,10)<todayKey).sort((a,b)=>b.game_date.localeCompare(a.game_date));
   const nextGames=visibleGames.filter(g=>!hasFinalScore(g)&&String(g.game_date).slice(0,10)>=todayKey).sort((a,b)=>a.game_date.localeCompare(b.game_date));
   const completedGames=visibleGames.filter(hasFinalScore).sort((a,b)=>b.game_date.localeCompare(a.game_date));
+  function renderTrackerDetail(gameArg){
+    if(!gameArg)return null;
+
+          const game=gameArg,forecast=forecastForGame(game);
+          const modelMargin=forecast?.predicted_home_margin==null?null:Number(forecast.predicted_home_margin);
+          const modelTotal=forecast?.predicted_total_points==null?null:Number(forecast.predicted_total_points);
+          const openingSpread=game.opening_spread_points==null?null:Number(game.opening_spread_points);
+          const openingTotal=game.opening_over_under_line==null?null:Number(game.opening_over_under_line);
+          const closingSpread=game.closing_spread_points==null?null:Number(game.closing_spread_points);
+          const closingTotal=game.closing_over_under_line==null?null:Number(game.closing_over_under_line);
+          const final=game.away_score!=null&&game.home_score!=null;
+          const actualMargin=final?Number(game.home_score)-Number(game.away_score):null;
+          const actualTotal=final?Number(game.home_score)+Number(game.away_score):null;
+          const marginError=value=>value==null||actualMargin==null?null:Math.abs(actualMargin-value);
+          const totalError=value=>value==null||actualTotal==null?null:Math.abs(actualTotal-value);
+          const modelMarginError=marginError(modelMargin),openMarginError=marginError(openingSpread),closeMarginError=marginError(closingSpread);
+          const modelTotalError=totalError(modelTotal),openTotalError=totalError(openingTotal),closeTotalError=totalError(closingTotal);
+          const closer=(a,b)=>a==null||b==null?null:a<b?"Model":a>b?"Vegas":"Tie";
+          const scoreText=value=>value==null?"—":Number(value).toFixed(1);
+          return <>
+            <div className="tracker-matchup-head">
+              <div className="tracker-team"><img src={teamLogoUrl(game.away_team)} alt="" onError={e=>{e.currentTarget.style.display="none";}}/><div><h2>{game.away_team}</h2><span>Away</span></div></div>
+              <b className="tracker-at">@</b>
+              <div className="tracker-team tracker-team-home"><img src={teamLogoUrl(game.home_team)} alt="" onError={e=>{e.currentTarget.style.display="none";}}/><div><h2>{game.home_team}</h2><span>Home</span></div></div>
+              <div className="tracker-game-meta">{formatDate(game.game_date)} · {formatGameTime(game.game_time)}</div>
+            </div>
+            <div className="tracker-value-grid">
+              <article className="tracker-value-card"><h3>Model Prediction <small>(Pre-Game)</small></h3><strong>{modelLineLabel(game,forecast)}</strong><b>Total: {scoreText(modelTotal)}</b><span>{forecast?"Saved pregame forecast":"No saved forecast found"}</span></article>
+              <article className="tracker-value-card"><h3>Opening Vegas Odds <small>(First Pre-Game Snapshot)</small></h3><strong>{lineLabel(game,openingSpread)}</strong><b>Total: {scoreText(openingTotal)}</b><span>{game.opening_provider||"Awaiting first odds snapshot"}</span></article>
+              <article className="tracker-value-card"><h3>Closing Vegas Odds <small>(Automatic)</small></h3><strong>{lineLabel(game,closingSpread)}</strong><b>Total: {scoreText(closingTotal)}</b><span>{game.closing_provider||game.closing_line_status||"Captured after game final"}</span></article>
+              <article className="tracker-value-card tracker-score-card"><h3>Final Score <small>(Your Input)</small></h3><div className="tracker-score-inputs"><label>{game.away_team}<input type="number" min="0" step="1" value={form.away_score} onChange={e=>setForm({...form,away_score:e.target.value})} placeholder="—"/></label><label>{game.home_team}<input type="number" min="0" step="1" value={form.home_score} onChange={e=>setForm({...form,home_score:e.target.value})} placeholder="—"/></label></div><button type="button" style={{...buttonStyle,width:"100%"}} disabled={busy||isGameLocked(game)||form.away_score===""||form.home_score===""} onClick={saveGame}>{busy?"Saving…":final?"Update Final Score":"Save Final Score"}</button></article>
+            </div>
+            {final?<section className="tracker-analysis">
+              <div className="tracker-analysis-heading"><h3>Game Complete · Analysis Ready</h3><span>{game.away_score}–{game.home_score} Final</span></div>
+              <div className="tracker-analysis-columns">
+                <div><h4>Spread Analysis</h4><p><span>Model prediction</span><b>{modelLineLabel(game,forecast)} · Error {scoreText(modelMarginError)}</b></p><p><span>Opening line</span><b>{lineLabel(game,openingSpread)} · Error {scoreText(openMarginError)}</b></p><p><span>Closing line</span><b>{lineLabel(game,closingSpread)} · Error {scoreText(closeMarginError)}</b></p><p><span>Actual margin</span><b>{actualMargin>0?game.home_team:actualMargin<0?game.away_team:"Tie"} {Math.abs(actualMargin)}</b></p><strong className="tracker-verdict">{closer(modelMarginError,openMarginError)==="Model"&&closer(modelMarginError,closeMarginError)==="Model"?"Model beat both market snapshots":closer(modelMarginError,closeMarginError)==="Model"?"Model closer than closing line": "Spread comparison available"}</strong></div>
+                <div><h4>Total Analysis</h4><p><span>Model prediction</span><b>{scoreText(modelTotal)} · Error {scoreText(modelTotalError)}</b></p><p><span>Opening total</span><b>{scoreText(openingTotal)} · Error {scoreText(openTotalError)}</b></p><p><span>Closing total</span><b>{scoreText(closingTotal)} · Error {scoreText(closeTotalError)}</b></p><p><span>Actual total</span><b>{actualTotal}</b></p><strong className="tracker-verdict">{closer(modelTotalError,openTotalError)==="Model"&&closer(modelTotalError,closeTotalError)==="Model"?"Model beat both market totals":closer(modelTotalError,closeTotalError)==="Model"?"Model beat closing total":closer(modelTotalError,closeTotalError)==="Vegas"?"Closing total was closer":"Total comparison available"}</strong></div>
+              </div>
+              <p className="tracker-analysis-note">Error is the absolute point difference between the projected margin/total and the final result. Missing lines or forecasts are left ungraded.</p>
+            </section>:<div className="tracker-pregame-note">Opening odds and the saved pregame model forecast are preserved for this matchup. The opening value is the first pregame ESPN snapshot captured by the nightly feed (not necessarily the book’s original market opener). After the game ends, enter only the two final scores; closing odds and the comparison are handled automatically.</div>}
+          </>;
+        
+  }
+
   const ouGradedCount=completed.filter(g=>g.over_under_line!=null&&g.total_points!=null).length;
   const trackerForecasts=[...(predictionData?.upcoming||[]),...(predictionData?.performance?.recent||[])];
   function forecastForGame(game){
@@ -470,58 +514,17 @@ export default function Home() {
     </div></div>
     {message&&<div className="notice">{message}</div>}
     {toast&&<div className="save-toast" role="status" aria-live="polite"><span className="save-toast-mark">✓</span>{toast}</div>}
-    {tab==="Game Tracker"?<div className="tracker-layout tracker-layout-redesign">
+    {tab==="Game Tracker"?<div className="tracker-layout tracker-layout-redesign tracker-inline-layout">
       <div className="game-list tracker-game-list">
         <div className="game-search"><input aria-label="Search games" style={inputStyle} placeholder="Search team, date, or game ID…" value={gameSearch} onChange={e=>setGameSearch(e.target.value)}/><span>{visibleGames.length.toLocaleString()} games</span></div>
         {busy&&!games.length?<p className="empty">Loading games…</p>:<>
-          {needsResults.length>0&&<section className="tracker-group"><div className="tracker-group-heading"><span><b>Needs Results</b><small>Final score still needed</small></span><strong>{needsResults.length}</strong></div>{needsResults.map(g=><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}><span><b>{g.away_team} @ {g.home_team}</b><small>{formatDate(g.game_date)} · {g.game_time||"Time TBD"}</small></span><span className="tracker-status pending-score">Score needed</span></button>)}</section>}
-          {nextGames.length>0&&<section className="tracker-group"><div className="tracker-group-heading"><span><b>Upcoming Games</b><small>Odds load automatically as ESPN makes them available</small></span><strong>{nextGames.length}</strong></div>{nextGames.map(g=><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}><span><b>{g.away_team} @ {g.home_team}</b><small>{formatDate(g.game_date)} · {g.game_time||"Time TBD"}</small></span><span className="tracker-status">{g.opening_spread_points!=null||g.opening_over_under_line!=null?"Odds loaded":"Waiting for odds"}</span></button>)}</section>}
-          {completedGames.length>0&&<details className="tracker-completed" open={status==="completed"}><summary>Completed Games <span>{completedGames.length}</span></summary>{completedGames.map(g=><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}><span><b>{g.away_team} @ {g.home_team}</b><small>{formatDate(g.game_date)} · {g.game_time||"Time TBD"}</small></span><span className="score">{g.away_score} – {g.home_score}</span></button>)}</details>}
+          {needsResults.length>0&&<section className="tracker-group"><div className="tracker-group-heading"><span><b>Needs Results</b><small>Final score still needed</small></span><strong>{needsResults.length}</strong></div>{needsResults.map(g=><div className="tracker-game-entry" key={g.competition_type+"-"+g.source_game_id}><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}><span><b>{g.away_team} @ {g.home_team}</b><small>{formatDate(g.game_date)} · {g.game_time||"Time TBD"}</small></span><span className="tracker-status pending-score">Score needed</span></button>{selectedGame?.competition_type===g.competition_type&&Number(selectedGame?.source_game_id)===Number(g.source_game_id)&&renderTrackerDetail(g)}</div>)}</section>}
+          {nextGames.length>0&&<section className="tracker-group"><div className="tracker-group-heading"><span><b>Upcoming Games</b><small>Odds load automatically as ESPN makes them available</small></span><strong>{nextGames.length}</strong></div>{nextGames.map(g=><div className="tracker-game-entry" key={g.competition_type+"-"+g.source_game_id}><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}><span><b>{g.away_team} @ {g.home_team}</b><small>{formatDate(g.game_date)} · {g.game_time||"Time TBD"}</small></span><span className="tracker-status">{g.opening_spread_points!=null||g.opening_over_under_line!=null?"Odds loaded":"Waiting for odds"}</span></button>)}</section>}
+          {completedGames.length>0&&<details className="tracker-completed" open={status==="completed"}><summary>Completed Games <span>{completedGames.length}</span></summary>{completedGames.map(g=><div className="tracker-game-entry" key={g.competition_type+"-"+g.source_game_id}><button key={g.source_game_id} className={selectedGame?.source_game_id===g.source_game_id?"game-row chosen":"game-row"} onClick={()=>chooseGame(g)}><span><b>{g.away_team} @ {g.home_team}</b><small>{formatDate(g.game_date)} · {g.game_time||"Time TBD"}</small></span><span className="score">{g.away_score} – {g.home_score}</span></button>{selectedGame?.competition_type===g.competition_type&&Number(selectedGame?.source_game_id)===Number(g.source_game_id)&&renderTrackerDetail(g)}</div>)}</details>
         </>}
         {!visibleGames.length&&!busy&&<p className="empty">No games match this search and filter.</p>}
       </div>
-      <section className="tracker-detail">
-        {!selectedGame?<div className="empty-state"><h3>Select a game</h3><p>Choose a matchup to see its model forecast, opening odds, closing odds and score entry.</p></div>:(()=>{
-          const game=selectedGame,forecast=forecastForGame(game);
-          const modelMargin=forecast?.predicted_home_margin==null?null:Number(forecast.predicted_home_margin);
-          const modelTotal=forecast?.predicted_total_points==null?null:Number(forecast.predicted_total_points);
-          const openingSpread=game.opening_spread_points==null?null:Number(game.opening_spread_points);
-          const openingTotal=game.opening_over_under_line==null?null:Number(game.opening_over_under_line);
-          const closingSpread=game.closing_spread_points==null?null:Number(game.closing_spread_points);
-          const closingTotal=game.closing_over_under_line==null?null:Number(game.closing_over_under_line);
-          const final=game.away_score!=null&&game.home_score!=null;
-          const actualMargin=final?Number(game.home_score)-Number(game.away_score):null;
-          const actualTotal=final?Number(game.home_score)+Number(game.away_score):null;
-          const marginError=value=>value==null||actualMargin==null?null:Math.abs(actualMargin-value);
-          const totalError=value=>value==null||actualTotal==null?null:Math.abs(actualTotal-value);
-          const modelMarginError=marginError(modelMargin),openMarginError=marginError(openingSpread),closeMarginError=marginError(closingSpread);
-          const modelTotalError=totalError(modelTotal),openTotalError=totalError(openingTotal),closeTotalError=totalError(closingTotal);
-          const closer=(a,b)=>a==null||b==null?null:a<b?"Model":a>b?"Vegas":"Tie";
-          const scoreText=value=>value==null?"—":Number(value).toFixed(1);
-          return <>
-            <div className="tracker-matchup-head">
-              <div className="tracker-team"><img src={teamLogoUrl(game.away_team)} alt="" onError={e=>{e.currentTarget.style.display="none";}}/><div><h2>{game.away_team}</h2><span>Away</span></div></div>
-              <b className="tracker-at">@</b>
-              <div className="tracker-team tracker-team-home"><img src={teamLogoUrl(game.home_team)} alt="" onError={e=>{e.currentTarget.style.display="none";}}/><div><h2>{game.home_team}</h2><span>Home</span></div></div>
-              <div className="tracker-game-meta">{formatDate(game.game_date)} · {formatGameTime(game.game_time)}</div>
-            </div>
-            <div className="tracker-value-grid">
-              <article className="tracker-value-card"><h3>Model Prediction <small>(Pre-Game)</small></h3><strong>{modelLineLabel(game,forecast)}</strong><b>Total: {scoreText(modelTotal)}</b><span>{forecast?"Saved pregame forecast":"No saved forecast found"}</span></article>
-              <article className="tracker-value-card"><h3>Opening Vegas Odds <small>(First Pre-Game Snapshot)</small></h3><strong>{lineLabel(game,openingSpread)}</strong><b>Total: {scoreText(openingTotal)}</b><span>{game.opening_provider||"Awaiting first odds snapshot"}</span></article>
-              <article className="tracker-value-card"><h3>Closing Vegas Odds <small>(Automatic)</small></h3><strong>{lineLabel(game,closingSpread)}</strong><b>Total: {scoreText(closingTotal)}</b><span>{game.closing_provider||game.closing_line_status||"Captured after game final"}</span></article>
-              <article className="tracker-value-card tracker-score-card"><h3>Final Score <small>(Your Input)</small></h3><div className="tracker-score-inputs"><label>{game.away_team}<input type="number" min="0" step="1" value={form.away_score} onChange={e=>setForm({...form,away_score:e.target.value})} placeholder="—"/></label><label>{game.home_team}<input type="number" min="0" step="1" value={form.home_score} onChange={e=>setForm({...form,home_score:e.target.value})} placeholder="—"/></label></div><button type="button" style={{...buttonStyle,width:"100%"}} disabled={busy||isGameLocked(game)||form.away_score===""||form.home_score===""} onClick={saveGame}>{busy?"Saving…":final?"Update Final Score":"Save Final Score"}</button></article>
-            </div>
-            {final?<section className="tracker-analysis">
-              <div className="tracker-analysis-heading"><h3>Game Complete · Analysis Ready</h3><span>{game.away_score}–{game.home_score} Final</span></div>
-              <div className="tracker-analysis-columns">
-                <div><h4>Spread Analysis</h4><p><span>Model prediction</span><b>{modelLineLabel(game,forecast)} · Error {scoreText(modelMarginError)}</b></p><p><span>Opening line</span><b>{lineLabel(game,openingSpread)} · Error {scoreText(openMarginError)}</b></p><p><span>Closing line</span><b>{lineLabel(game,closingSpread)} · Error {scoreText(closeMarginError)}</b></p><p><span>Actual margin</span><b>{actualMargin>0?game.home_team:actualMargin<0?game.away_team:"Tie"} {Math.abs(actualMargin)}</b></p><strong className="tracker-verdict">{closer(modelMarginError,openMarginError)==="Model"&&closer(modelMarginError,closeMarginError)==="Model"?"Model beat both market snapshots":closer(modelMarginError,closeMarginError)==="Model"?"Model closer than closing line": "Spread comparison available"}</strong></div>
-                <div><h4>Total Analysis</h4><p><span>Model prediction</span><b>{scoreText(modelTotal)} · Error {scoreText(modelTotalError)}</b></p><p><span>Opening total</span><b>{scoreText(openingTotal)} · Error {scoreText(openTotalError)}</b></p><p><span>Closing total</span><b>{scoreText(closingTotal)} · Error {scoreText(closeTotalError)}</b></p><p><span>Actual total</span><b>{actualTotal}</b></p><strong className="tracker-verdict">{closer(modelTotalError,openTotalError)==="Model"&&closer(modelTotalError,closeTotalError)==="Model"?"Model beat both market totals":closer(modelTotalError,closeTotalError)==="Model"?"Model beat closing total":closer(modelTotalError,closeTotalError)==="Vegas"?"Closing total was closer":"Total comparison available"}</strong></div>
-              </div>
-              <p className="tracker-analysis-note">Error is the absolute point difference between the projected margin/total and the final result. Missing lines or forecasts are left ungraded.</p>
-            </section>:<div className="tracker-pregame-note">Opening odds and the saved pregame model forecast are preserved for this matchup. The opening value is the first pregame ESPN snapshot captured by the nightly feed (not necessarily the book’s original market opener). After the game ends, enter only the two final scores; closing odds and the comparison are handled automatically.</div>}
-          </>;
-        })()}
-      </section>
+
     </div>:tab==="Overview"?<div className="analytics overview-dashboard">
       <div className="overview-hero"><div><span className="eyebrow">NFL ANALYTICS AT A GLANCE</span><h3>Your league-wide dashboard</h3><p>Historical results, team performance and betting trends in one place. Choose any chart or section from the navigation to dig deeper.</p></div><div className="overview-season"><strong>{CURRENT_NFL_SEASON}</strong><span>SEASON VIEW</span></div></div>
       <div className="performance-cards overview-metrics">
