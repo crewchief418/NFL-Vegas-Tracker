@@ -251,7 +251,7 @@ export default function Home() {
           const modelTotalError=totalError(modelTotal),openTotalError=totalError(openingTotal),closeTotalError=totalError(closingTotal);
           const closer=(a,b)=>a==null||b==null?null:a<b?"Model":a>b?"Vegas":"Tie";
           const scoreText=value=>value==null?"—":Number(value).toFixed(1);
-          return <>
+          return <section className="tracker-detail">
             <div className="tracker-matchup-head">
               <div className="tracker-team"><img src={teamLogoUrl(game.away_team)} alt="" onError={e=>{e.currentTarget.style.display="none";}}/><div><h2>{game.away_team}</h2><span>Away</span></div></div>
               <b className="tracker-at">@</b>
@@ -272,7 +272,7 @@ export default function Home() {
               </div>
               <p className="tracker-analysis-note">Error is the absolute point difference between the projected margin/total and the final result. Missing lines or forecasts are left ungraded.</p>
             </section>:<div className="tracker-pregame-note">Opening odds and the saved pregame model forecast are preserved for this matchup. The opening value is the first pregame ESPN snapshot captured by the nightly feed (not necessarily the book’s original market opener). After the game ends, enter only the two final scores; closing odds and the comparison are handled automatically.</div>}
-          </>;
+          </section>;
         
   }
 
