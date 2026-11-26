@@ -21,7 +21,7 @@ function authorized(request) {
 }
 function fullGamePeriod(period) {
   const p = String(period || "").toLowerCase();
-  return !/(1st|2nd|3rd|4th|first|second|quarter|half|q[1-4]|1h|2h)/.test(p);
+  return !/(1st|2nd|3rd|4th|first|second|third|fourth|quarter|half|q[1-4]|[1-4]q|1h|2h)/.test(p);
 }
 function selectionAvailable(selections, side) {
   const item = (Array.isArray(selections) ? selections : []).find(x => String(x.side || "").toLowerCase() === side);
