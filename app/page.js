@@ -287,7 +287,7 @@ export default function Home() {
       await loadGames();
       // Closing lines are attached after the game is final by the existing ESPN
       // closing-line job. Do not block score entry if the scheduled batch is busy.
-      fetch("/api/closing-lines",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({})}).catch(()=>{});
+      fetch("/api/closing-lines",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({retry:true})}).catch(()=>{});
     }catch(e){setMessage(e.message);}finally{setBusy(false);}
   }
   async function createGame(e) {
