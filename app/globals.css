@@ -715,3 +715,59 @@ input, select { max-width: 100%; }
  .tracker-analysis-heading{align-items:flex-start;flex-direction:column;gap:4px}
 }
 @media(max-width:390px){.tracker-value-grid{grid-template-columns:1fr}.tracker-team img{width:34px;height:34px;flex-basis:34px}.tracker-team h2{font-size:13px}}
+
+
+/* Game Tracker refinement: full dark palette and one natural page scroll. */
+.tracker-layout-redesign{
+  background:#0b1220;border-color:#26364b;overflow:visible;
+  min-height:0;align-items:start;
+}
+.tracker-game-list{
+  max-height:none!important;height:auto;overflow:visible!important;
+  background:#0e1929;border-right:1px solid #26364b;
+}
+.tracker-game-list .game-search{
+  position:relative;top:auto;background:#0e1929;border-bottom:1px solid #26364b;
+}
+.tracker-game-list .game-search input{background:#111f32!important;color:#e6edf7!important;border-color:#34465e!important}
+.tracker-game-list .game-row{background:transparent;color:#d8e2ef;border-bottom:1px solid #26364b}
+.tracker-game-list .game-row b{color:#e8eef7}
+.tracker-game-list .game-row small{color:#91a4bb}
+.tracker-game-list .game-row:hover{background:#18283d}
+.tracker-game-list .game-row.chosen{background:#1a3554;color:#f3f7fc;border-left:4px solid #60a5fa}
+.tracker-game-list .game-row.chosen b{color:#fff}
+.tracker-group-heading{background:#111f32;color:#e3ebf5;border-bottom:1px solid #26364b}
+.tracker-group-heading small{color:#91a4bb}
+.tracker-status{background:#1c3552;color:#9bcaff}
+.tracker-status.pending-score{background:#49351a;color:#ffd18a}
+.tracker-completed summary{color:#dbe6f3}
+.tracker-completed summary span{background:#26364b;color:#dbe6f3}
+.tracker-detail{background:#0b1220;color:#e7edf6}
+.tracker-matchup-head{background:#111d2e;border-color:#2a3b52}
+.tracker-team h2,.tracker-at{color:#f1f5fb}
+.tracker-team span,.tracker-game-meta{color:#9aacc1}
+.tracker-game-meta{border-color:#2a3b52}
+.tracker-value-card{background:#111d2e;border-color:#2a3b52;box-shadow:none}
+.tracker-value-card h3,.tracker-value-card>strong,.tracker-value-card>b{color:#edf3fb}
+.tracker-value-card h3 small,.tracker-value-card>span{color:#9aacc1}
+.tracker-score-inputs label{color:#b6c4d5}
+.tracker-score-inputs input{background:#0b1524;border-color:#40536c;color:#fff}
+.tracker-score-card button{background:#2563eb!important}
+.tracker-analysis{background:#111d2e;border-color:#2a3b52}
+.tracker-analysis-heading{background:#142d26;border-color:#286548;color:#a7f3c2}
+.tracker-analysis-columns h4{color:#edf3fb}
+.tracker-analysis-columns p{border-color:#2a3b52;color:#a7b7ca}
+.tracker-analysis-columns p b{color:#e7eef8}
+.tracker-verdict{background:#142d26;border-color:#286548;color:#a7f3c2}
+.tracker-analysis-note,.tracker-pregame-note{background:#17263a;color:#a9bad0}
+.tracker-detail .empty-state,.tracker-game-list .empty{color:#a9bad0}
+.tracker-layout-redesign .tracker-completed{border-color:#26364b}
+@media(max-width:1100px){
+ .tracker-game-list{max-height:none!important;overflow:visible!important}
+}
+@media(max-width:760px){
+ .tracker-layout-redesign{grid-template-columns:minmax(0,1fr);overflow:visible}
+ .tracker-game-list{max-height:none!important;overflow:visible!important;border-right:0;border-bottom:1px solid #26364b}
+ .tracker-game-list .game-search{position:relative;top:auto}
+ .tracker-detail{padding:11px}
+}
