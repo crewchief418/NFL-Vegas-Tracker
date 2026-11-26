@@ -17,6 +17,7 @@ function weekWindow(dateText) {
   return {start,end:d.toISOString().slice(0,10)};
 }
 function n(value){const x=Number(value);return Number.isFinite(x)?x:0;}
+function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
 function average(rows,key){
   let total=0,weight=0;
   rows.forEach((row,i)=>{const w=Math.pow(.88,i);total+=n(row.payload?.[key])*w;weight+=w;});
@@ -33,6 +34,37 @@ function injuryFactor(row){
   if(practice.includes("limited"))return .85;
   return 1;
 }
+function buildDefenseProfiles(rows){
+  const allowed=new Map(),league={};
+  const keys=["passing_yards","passing_tds","passing_interceptions","rushing_yards","rushing_tds","receptions","receiving_yards","receiving_tds"];
+  for(const row of rows){
+    const defense=String(row.opponent_team_code||"");
+    if(!defense)continue;
+    if(!allowed.has(defense))allowed.set(defense,{games:0,totals:{}});
+    const profile=allowed.get(defense);
+    profile.games++;
+    for(const key of keys){
+      const value=n(row.payload?.[key]);
+      profile.totals[key]=(profile.totals[key]||0)+value;
+      league[key]=(league[key]||0)+value;
+    }
+  }
+  const leagueGames=rows.length||1;
+  const profiles=new Map();
+  for(const [team,profile] of allowed){
+    const factors={};
+    for(const key of keys){
+      const teamAverage=profile.totals[key]/Math.max(1,profile.games);
+      const leagueAverage=(league[key]||0)/leagueGames;
+      const raw=leagueAverage>0?teamAverage/leagueAverage:1;
+      // Small samples and extreme weekly results are deliberately damped.
+      const cap=key.includes("td")||key==="passing_interceptions"?.20:.12;
+      factors[key]=clamp(1+(raw-1)*.65,1-cap,1+cap);
+    }
+    profiles.set(team,{games:profile.games,factors});
+  }
+  return profiles;
+}
 function projectPlayer(rows, injury){
   const first=rows[0], pos=String(first.position||"").toUpperCase();
   const factor=injuryFactor(injury);
@@ -41,7 +73,7 @@ function projectPlayer(rows, injury){
   const base={
     player_id:first.player_id,
     player_name:first.payload?.player_display_name||first.player_name,
-    team:first.team,position:pos,
+    team:first.team,team_code:first.payload?.team||null,position:pos,
     games_sampled:rows.length,
     injury_status:injury?.report_status||injury?.practice_status||"Available",
     injury:injury?.injury||null,
@@ -54,6 +86,28 @@ function projectPlayer(rows, injury){
   if(pos==="RB")return {...base,carries:round(p("carries")),rushing_yards:round(p("rushing_yards")),rushing_tds:round(p("rushing_tds")),targets:round(p("targets")),receptions:round(p("receptions")),receiving_yards:round(p("receiving_yards")),receiving_tds:round(p("receiving_tds"))};
   return {...base,targets:round(p("targets")),receptions:round(p("receptions")),receiving_yards:round(p("receiving_yards")),receiving_tds:round(p("receiving_tds"))};
 }
+function applyMatchup(player, defense, opponentTeam){
+  if(!defense)return {...player,opponent_defense:opponentTeam||"Unknown",matchup_sample_games:0,matchup_adjustment_pct:0,matchup_label:"No matchup data"};
+  const f=defense.factors;
+  const keys=player.position==="QB"
+    ?["passing_yards","passing_tds","rushing_yards","rushing_tds"]
+    :player.position==="RB"
+      ?["rushing_yards","rushing_tds","receptions","receiving_yards","receiving_tds"]
+      :["receptions","receiving_yards","receiving_tds"];
+  const map={
+    passing_yards:f.passing_yards,passing_tds:f.passing_tds,interceptions:f.passing_interceptions,
+    rushing_yards:f.rushing_yards,rushing_tds:f.rushing_tds,
+    receptions:f.receptions,receiving_yards:f.receiving_yards,receiving_tds:f.receiving_tds
+  };
+  const adjusted={...player};
+  for(const key of Object.keys(map)){
+    if(typeof adjusted[key]==="number"&&map[key])adjusted[key]=Math.round(adjusted[key]*map[key]*10)/10;
+  }
+  const mean=keys.reduce((sum,key)=>sum+(map[key]||1),0)/keys.length;
+  const pct=Math.round((mean-1)*100);
+  return {...adjusted,opponent_defense:opponentTeam||"Opponent",matchup_sample_games:defense.games,
+    matchup_adjustment_pct:pct,matchup_label:pct>=5?"Favorable":pct<=-5?"Tough":"Neutral"};
+}
 export async function GET(){
   try{
     const today=easternDate(),window=weekWindow(today);
@@ -64,7 +118,7 @@ export async function GET(){
       ORDER BY game_date,game_time NULLS LAST,source_game_id`,[window.start,window.end]);
     if(!games.rowCount)return NextResponse.json({week:window,games:[],message:"No upcoming games in the current NFL week."});
     const season=Number(games.rows[0].season);
-    const [stats,injuries,sync]=await Promise.all([
+    const [stats,injuries,defenseRows,sync]=await Promise.all([
       query(`WITH latest_week AS (SELECT MAX(week) AS week FROM public.nflverse_player_weekly_stats WHERE season=$1 AND season_type='REG'),
         ranked AS (SELECT season,week,player_id,player_name,team,position,payload,
           ROW_NUMBER() OVER(PARTITION BY player_id ORDER BY week DESC) AS rn
@@ -77,11 +131,22 @@ export async function GET(){
         report_status,practice_status,injury,report_date
         FROM public.nflverse_injury_reports WHERE season=$1
         ORDER BY team,player_id,player_name,report_date DESC`,[season]),
+      query(`WITH latest_week AS (
+          SELECT MAX(week) AS week FROM public.nflverse_team_weekly_stats WHERE season=$1 AND season_type='REG'
+        )
+        SELECT season,week,team,payload->>'team' AS team_code,
+          payload->>'opponent_team' AS opponent_team_code,payload
+        FROM public.nflverse_team_weekly_stats
+        WHERE season=$1 AND season_type='REG'
+          AND week > GREATEST(0,(SELECT week FROM latest_week)-8)
+          AND week <= (SELECT week FROM latest_week)
+        ORDER BY week DESC`,[season]),
       query(`SELECT last_synced,status FROM public.data_source_sync WHERE source='nflverse_player_stats'`)
     ]);
     const injuryMap=new Map(injuries.rows.map(x=>[`${x.team}:${x.player_id||x.player_name}`,x]));
-    const groups=new Map();
+    const groups=new Map(),teamCodeByName=new Map();
     for(const row of stats.rows){
+      if(row.payload?.team)teamCodeByName.set(row.team,row.payload.team);
       const key=`${row.team}:${row.player_id}`;
       if(!groups.has(key))groups.set(key,[]);
       groups.get(key).push(row);
@@ -91,22 +156,26 @@ export async function GET(){
       const r=rows[0],injury=injuryMap.get(`${r.team}:${r.player_id}`)||injuryMap.get(`${r.team}:${r.player_name}`);
       return projectPlayer(rows,injury);
     });
+    const defenseProfiles=buildDefenseProfiles(defenseRows.rows);
     const result=games.rows.map(game=>{
-      const byTeam=team=>{
+      const byTeam=(team,opponent)=>{
+        const opponentCode=teamCodeByName.get(opponent);
+        const defense=defenseProfiles.get(opponentCode);
         const rows=projected.filter(p=>p.team===team&&p.role_usage>=8).sort((a,b)=>pRank(b)-pRank(a));
         return [
           ...rows.filter(p=>p.position==="QB").slice(0,1),
           ...rows.filter(p=>p.position==="RB").slice(0,3),
           ...rows.filter(p=>p.position==="WR").slice(0,5),
           ...rows.filter(p=>p.position==="TE").slice(0,2)
-        ];
+        ].map(player=>applyMatchup(player,defense,opponent));
       };
-      const home=byTeam(game.home_team),away=byTeam(game.away_team);
+      const home=byTeam(game.home_team,game.away_team),away=byTeam(game.away_team,game.home_team);
       return {...game,players:{away,home}};
     });
     return NextResponse.json({week:window,season,games:result,
       dataUpdatedAt:sync.rows[0]?.last_synced||null,dataStatus:sync.rows[0]?.status||"unknown",
-      playerRows:stats.rowCount,injuryRows:injuries.rowCount});
+      playerRows:stats.rowCount,injuryRows:injuries.rowCount,defenseRows:defenseRows.rowCount,
+      defenseSampleWeeks:8});
   }catch(error){
     console.error("GET /api/player-projections:",error);
     return NextResponse.json({error:"Unable to build player projections from the latest nflverse data."},{status:500});
