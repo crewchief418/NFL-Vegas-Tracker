@@ -332,6 +332,7 @@ button:disabled { opacity: .55; cursor: wait !important; }
 .prediction-matchup>div{display:grid;gap:5px;min-width:0}
 .prediction-matchup small{color:#8497ad;font-size:8px;letter-spacing:1.4px;font-weight:900}
 .prediction-matchup b{font-size:clamp(12px,2vw,16px);overflow-wrap:anywhere}
+.prediction-team-logo{width:48px;height:48px;object-fit:contain;justify-self:center;margin:2px auto;filter:drop-shadow(0 2px 5px rgba(0,0,0,.28))}
 .prediction-matchup strong{color:#f1c65c;font-size:25px;font-variant-numeric:tabular-nums}
 .prediction-at{color:#72849a;font-size:11px;font-weight:900}
 .prediction-win-label{display:flex;justify-content:space-between;gap:8px;color:#9eafc1;font-size:9px;font-weight:850;letter-spacing:.8px}
