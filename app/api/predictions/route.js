@@ -57,6 +57,9 @@ async function loadExternalContext(upcoming) {
     return map;
   },new Map());
   const teamStats=byTeam(teamResult.rows), playerStats=byTeam(playerResult.rows), injuries=byTeam(injuryResult.rows);
+  // QB context is consumed below; build a dedicated team-indexed map so
+  // forecast generation does not fail with a ReferenceError before saving.
+  const qbStats=byTeam(playerResult.rows.filter(row=>row.position==='QB'));
   const weather=new Map(weatherResult.rows.map(row=>[`${row.competition_type}:${row.source_game_id}`,row]));
   const enriched=upcoming.map(game=>({...game,external_context:{
     homeTeamStats:teamStats.get(game.home_team)||[],
